@@ -150,6 +150,16 @@ function showToastNotification(type, title, message) {
             white-space: pre-wrap;
         }
 
+        .message a {
+            color: #6366f1;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+
+        .message a:hover {
+            color: #a855f7;
+        }
+
         .btn-close {
             position: absolute;
             top: 12px;
@@ -188,24 +198,37 @@ function showToastNotification(type, title, message) {
         }
     `;
 
-    // SVG 아이콘들
-    const successIcon = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
-    const errorIcon = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>`;
-    const infoIcon = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
-    const closeIcon = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+    // Helper to create SVGs programmatically (preventing innerHTML security issues during extension signing)
+    const createSVG = (pathD, strokeWidth = "3") => {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", "14");
+        svg.setAttribute("height", "14");
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", strokeWidth);
+        svg.setAttribute("viewBox", "0 0 24 24");
+        
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("stroke-linejoin", "round");
+        path.setAttribute("d", pathD);
+        
+        svg.appendChild(path);
+        return svg;
+    };
 
-    let activeIcon = infoIcon;
     let iconClass = 'icon-info';
     let progressColor = '#3b82f6';
+    let pathD = "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"; // info path
     
     if (type === 'success') {
-        activeIcon = successIcon;
         iconClass = 'icon-success';
         progressColor = '#10b981';
+        pathD = "M5 13l4 4L19 7";
     } else if (type === 'error') {
-        activeIcon = errorIcon;
         iconClass = 'icon-error';
         progressColor = '#ef4444';
+        pathD = "M6 18L18 6M6 6l12 12";
     }
 
     const duration = type === 'error' ? 8000 : 4500;
@@ -215,19 +238,83 @@ function showToastNotification(type, title, message) {
     card.style.setProperty('--progress-color', progressColor);
     card.style.setProperty('--timeout', `${duration}ms`);
 
-    card.innerHTML = `
-        <div class="icon-container ${iconClass}">
-            ${activeIcon}
-        </div>
-        <div class="content-container">
-            <h4 class="title">${title}</h4>
-            <div class="message">${message}</div>
-        </div>
-        <button class="btn-close" aria-label="Close">
-            ${closeIcon}
-        </button>
-        <div class="progress-bar"></div>
-    `;
+    // Icon Container
+    const iconContainer = document.createElement("div");
+    iconContainer.className = `icon-container ${iconClass}`;
+    iconContainer.appendChild(createSVG(pathD, "3"));
+
+    // Content Container
+    const contentContainer = document.createElement("div");
+    contentContainer.className = "content-container";
+
+    const titleEl = document.createElement("h4");
+    titleEl.className = "title";
+    titleEl.textContent = title;
+
+    // Helper to safely parse and render limited HTML tags (a, br) programmatically to avoid innerHTML reviews
+    const setSafeHTML = (targetEl, htmlString) => {
+        targetEl.textContent = "";
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, "text/html");
+            
+            const copyNodes = (source, target) => {
+                source.childNodes.forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        target.appendChild(document.createTextNode(node.textContent));
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        const tagName = node.tagName.toLowerCase();
+                        if (tagName === "a") {
+                            const anchor = document.createElement("a");
+                            anchor.textContent = node.textContent;
+                            
+                            const href = node.getAttribute("href");
+                            if (href && (href.startsWith("http://") || href.startsWith("https://"))) {
+                                anchor.setAttribute("href", href);
+                            }
+                            
+                            const targetAttr = node.getAttribute("target");
+                            anchor.setAttribute("target", targetAttr || "_blank");
+                            
+                            target.appendChild(anchor);
+                        } else if (tagName === "br") {
+                            target.appendChild(document.createElement("br"));
+                        } else {
+                            const span = document.createElement("span");
+                            copyNodes(node, span);
+                            target.appendChild(span);
+                        }
+                    }
+                });
+            };
+            copyNodes(doc.body, targetEl);
+        } catch (e) {
+            targetEl.textContent = htmlString;
+        }
+    };
+
+    const messageEl = document.createElement("div");
+    messageEl.className = "message";
+    setSafeHTML(messageEl, message);
+
+    contentContainer.appendChild(titleEl);
+    contentContainer.appendChild(messageEl);
+
+    // Close Button
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "btn-close";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.appendChild(createSVG("M6 18L18 6M6 6l12 12", "2.2"));
+
+    // Progress Bar
+    const progressBar = document.createElement("div");
+    progressBar.className = "progress-bar";
+
+    // Assemble Card
+    card.appendChild(iconContainer);
+    card.appendChild(contentContainer);
+    card.appendChild(closeBtn);
+    card.appendChild(progressBar);
 
     shadow.appendChild(style);
     shadow.appendChild(card);
@@ -237,7 +324,6 @@ function showToastNotification(type, title, message) {
     setTimeout(() => card.classList.add("show"), 50);
 
     // 닫기 로직
-    const closeBtn = card.querySelector(".btn-close");
     let autoDismissTimeout;
 
     const dismiss = () => {

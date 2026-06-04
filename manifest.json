@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "image2n8n",
-    "version": "1.1",
+    "version": "1.3",
     "description": "우클릭한 이미지를 base64로 변환하여 n8n으로 전송합니다.",
     "permissions": [
         "contextMenus",
@@ -26,5 +26,15 @@
     "options_ui": {
         "page": "options.html",
         "open_in_tab": true
+    },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "image2n8n-uploader@bonik.net",
+            "data_collection_permissions": {
+                "required": [
+                    "none"
+                ]
+            }
+        }
     }
 }

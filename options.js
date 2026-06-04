@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
         card.addEventListener("click", () => {
             const radio = card.querySelector('input[type="radio"]');
             radio.checked = true;
-            
+
             const group = card.dataset.group; // 'success' or 'failure'
             updateCardSelection(group);
         });
@@ -98,16 +98,25 @@ function updateCardSelection(group) {
 
 function showStatus(message, type) {
     const statusMsg = document.getElementById("status-msg");
-    statusMsg.innerHTML = `
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            ${type === 'success' 
-                ? '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>' 
-                : '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>'}
-        </svg>
-        ${message}
-    `;
+    const iconSuccess = document.getElementById("icon-success");
+    const iconError = document.getElementById("icon-error");
+    const statusText = document.getElementById("status-text");
+
+    // 1. 타입에 따라 아이콘 노출 제어
+    if (type === 'success') {
+        iconSuccess.style.display = "inline-block";
+        iconError.style.display = "none";
+    } else {
+        iconSuccess.style.display = "none";
+        iconError.style.display = "inline-block";
+    }
+
+    // 2. 메시지는 innerHTML 대신 안전한 textContent로 주입 (★핵심)
+    statusText.textContent = message;
+
+    // 3. 클래스 부여 및 노출
     statusMsg.className = `status-msg show ${type}`;
-    
+
     setTimeout(() => {
         statusMsg.classList.remove("show");
     }, 3000);
