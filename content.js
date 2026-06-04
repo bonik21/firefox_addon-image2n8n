@@ -22,7 +22,8 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     browser.runtime.sendMessage({
                         action: "upload_to_n8n",
                         data: base64Data,
-                        filename: filename
+                        filename: filename,
+                        pageUrl: window.location.href
                     });
                 };
                 reader.readAsDataURL(blob);

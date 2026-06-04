@@ -59,7 +59,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
                 },
                 body: JSON.stringify({
                     image_base64: message.data,
-                    filename: message.filename || "image_fx_.jpg"
+                    filename: message.filename || "image_fx_.jpg",
+                    page_url: message.pageUrl
                 })
             })
             .then(async response => {
