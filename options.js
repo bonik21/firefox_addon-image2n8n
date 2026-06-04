@@ -1,13 +1,22 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const container = document.getElementById("webhooks-container");
+    const btnAdd = document.getElementById("btn-add-webhook");
+
+    // Add new webhook on button click
+    btnAdd.addEventListener("click", () => {
+        const id = 'wh_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        container.appendChild(createWebhookItemDOM(id));
+    });
+
     // Load saved settings
     browser.storage.local.get({
-        webhookUrl: "",
+        webhookUrl: "", // deprecated legacy single url
+        webhooks: [],   // list of { id, name, url }
         successAction: "popup",
         successUrl: "",
         failureAction: "popup",
         failureUrl: ""
     }).then(items => {
-        document.getElementById("webhook-url").value = items.webhookUrl;
         document.getElementById("success-url").value = items.successUrl;
         document.getElementById("failure-url").value = items.failureUrl;
 
@@ -17,6 +26,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
         updateCardSelection("success");
         updateCardSelection("failure");
+
+        // Load webhooks list
+        let webhooks = items.webhooks;
+        if (!webhooks || webhooks.length === 0) {
+            // Check for legacy single webhookUrl and migrate
+            if (items.webhookUrl) {
+                webhooks = [{ id: "default", name: "이미지 업로드(to n8n)", url: items.webhookUrl }];
+            } else {
+                // Default placeholder
+                webhooks = [{ id: "default", name: "이미지 업로드(to n8n)", url: "" }];
+            }
+        }
+
+        container.textContent = ""; // Clear container safely
+        webhooks.forEach(wh => {
+            container.appendChild(createWebhookItemDOM(wh.id, wh.name, wh.url));
+        });
     }).catch(err => {
         console.error("설정 로드 에러:", err);
     });
@@ -27,14 +53,47 @@ document.addEventListener("DOMContentLoaded", () => {
         const saveButton = document.getElementById("btn-save");
         saveButton.disabled = true;
 
-        const webhookUrl = document.getElementById("webhook-url").value.trim();
+        // Aggregate webhooks from DOM
+        const webhookItems = container.querySelectorAll(".webhook-item");
+        const webhooks = [];
+        let isValid = true;
+
+        webhookItems.forEach(item => {
+            const id = item.dataset.id;
+            const nameInput = item.querySelector(".webhook-name-input");
+            const urlInput = item.querySelector(".webhook-url-input");
+            
+            const name = nameInput ? nameInput.value.trim() : "";
+            const url = urlInput ? urlInput.value.trim() : "";
+
+            if (!name || !url) {
+                isValid = false;
+                if (nameInput && !name) nameInput.focus();
+                else if (urlInput && !url) urlInput.focus();
+                return;
+            }
+            webhooks.push({ id, name, url });
+        });
+
+        if (!isValid) {
+            showStatus("모든 기능 이름과 웹훅 URL을 입력해주세요.", "error");
+            saveButton.disabled = false;
+            return;
+        }
+
+        if (webhooks.length === 0) {
+            showStatus("최소 하나의 웹훅 설정이 필요합니다.", "error");
+            saveButton.disabled = false;
+            return;
+        }
+
         const successAction = getRadioValue("successAction");
         const successUrl = document.getElementById("success-url").value.trim();
         const failureAction = getRadioValue("failureAction");
         const failureUrl = document.getElementById("failure-url").value.trim();
 
         browser.storage.local.set({
-            webhookUrl,
+            webhooks,
             successAction,
             successUrl,
             failureAction,
@@ -60,6 +119,86 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
+
+// Helper to create SVGs programmatically to avoid any innerHTML warnings
+function createTrashSVG() {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "18");
+    svg.setAttribute("height", "18");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("d", "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16");
+    
+    svg.appendChild(path);
+    return svg;
+}
+
+// Create webhook item DOM elements programmatically
+function createWebhookItemDOM(id, name = "", url = "") {
+    const item = document.createElement("div");
+    item.className = "webhook-item";
+    item.dataset.id = id;
+
+    // Name field
+    const nameField = document.createElement("div");
+    nameField.className = "webhook-field";
+    
+    const nameLabel = document.createElement("label");
+    nameLabel.textContent = "기능 이름 (메뉴 표시 명칭)";
+    
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "webhook-name-input";
+    nameInput.placeholder = "예: 이미지 저장";
+    nameInput.value = name;
+    nameInput.required = true;
+    
+    nameField.appendChild(nameLabel);
+    nameField.appendChild(nameInput);
+
+    // URL field
+    const urlField = document.createElement("div");
+    urlField.className = "webhook-field";
+    
+    const urlLabel = document.createElement("label");
+    urlLabel.textContent = "n8n Webhook URL";
+    
+    const urlInput = document.createElement("input");
+    urlInput.type = "url";
+    urlInput.className = "webhook-url-input";
+    urlInput.placeholder = "https://n8n.example.com/webhook/...";
+    urlInput.value = url;
+    urlInput.required = true;
+    
+    urlField.appendChild(urlLabel);
+    urlField.appendChild(urlInput);
+
+    // Delete Button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "btn-delete";
+    deleteBtn.setAttribute("aria-label", "삭제");
+    deleteBtn.appendChild(createTrashSVG());
+    
+    deleteBtn.addEventListener("click", () => {
+        item.classList.add("removing");
+        setTimeout(() => {
+            item.remove();
+        }, 300);
+    });
+
+    item.appendChild(nameField);
+    item.appendChild(urlField);
+    item.appendChild(deleteBtn);
+
+    return item;
+}
 
 function getRadioValue(name) {
     const radio = document.querySelector(`input[name="${name}"]:checked`);
@@ -111,7 +250,7 @@ function showStatus(message, type) {
         iconError.style.display = "inline-block";
     }
 
-    // 2. 메시지는 innerHTML 대신 안전한 textContent로 주입 (★핵심)
+    // 2. 메시지 주입
     statusText.textContent = message;
 
     // 3. 클래스 부여 및 노출

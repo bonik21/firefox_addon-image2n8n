@@ -346,6 +346,102 @@
             color: var(--error-color);
         }
 
+        /* Webhooks List */
+        .webhooks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .webhook-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 180px 1fr auto;
+            gap: 16px;
+            align-items: start;
+            position: relative;
+            animation: slideIn 0.3s ease-out;
+            transition: var(--transition);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .webhook-item.removing {
+            opacity: 0;
+            transform: scale(0.9);
+            height: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
+            overflow: hidden;
+        }
+
+        .webhook-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .webhook-field label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+            color: var(--error-color);
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            align-self: end;
+            transition: var(--transition);
+        }
+
+        .btn-delete:hover {
+            background: var(--error-color);
+            color: #ffffff;
+            border-color: var(--error-color);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-add-webhook {
+            width: 100%;
+            padding: 14px;
+            background: rgba(99, 102, 241, 0.06);
+            border: 1px dashed rgba(99, 102, 241, 0.4);
+            border-radius: 12px;
+            color: var(--accent-primary);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add-webhook:hover {
+            background: rgba(99, 102, 241, 0.12);
+            border-color: var(--accent-primary);
+            color: #ffffff;
+        }
+
         /* Responsive */
         @media (max-width: 600px) {
             .container {
@@ -353,6 +449,15 @@
             }
             .option-grid {
                 grid-template-columns: 1fr;
+            }
+            .webhook-item {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .btn-delete {
+                align-self: stretch;
+                width: 100%;
+                height: 44px;
             }
         }
     </style>
@@ -371,18 +476,23 @@
         </header>
 
         <form id="settings-form">
-            <!-- Webhook URL -->
+            <!-- Webhooks List -->
             <div class="form-group">
-                <label class="section-title" for="webhook-url">
+                <div class="section-title">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                     </svg>
-                    n8n Webhook URL
-                </label>
-                <div class="input-wrapper">
-                    <input type="url" id="webhook-url" name="webhookUrl" placeholder="https://n8n.example.com/webhook/..." required>
+                    n8n 웹훅 및 메뉴 리스트
                 </div>
-                <p class="input-desc">이미지 데이터를 POST 요청으로 전송할 n8n 웹훅 주소를 입력하세요.</p>
+                <div id="webhooks-container" class="webhooks-container">
+                    <!-- Dynamic Webhook Cards -->
+                </div>
+                <button type="button" id="btn-add-webhook" class="btn-add-webhook">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
+                    </svg>
+                    새 기능/웹훅 추가
+                </button>
             </div>
 
             <!-- Success Action -->
