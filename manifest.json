@@ -1,11 +1,12 @@
 {
     "manifest_version": 3,
     "name": "image2n8n",
-    "version": "1.0",
+    "version": "1.1",
     "description": "우클릭한 이미지를 base64로 변환하여 n8n으로 전송합니다.",
     "permissions": [
         "contextMenus",
-        "activeTab"
+        "activeTab",
+        "storage"
     ],
     "background": {
         "scripts": [
@@ -21,5 +22,9 @@
                 "content.js"
             ]
         }
-    ]
+    ],
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    }
 }

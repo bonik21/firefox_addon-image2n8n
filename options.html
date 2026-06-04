@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>image2n8n 설정</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0c16;
+            --card-bg: rgba(20, 21, 38, 0.6);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+            padding: 40px 20px;
+        }
+
+        /* Background Glows */
+        .bg-glow-1 {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0,0,0,0) 70%);
+            top: -100px;
+            left: -100px;
+            z-index: -1;
+            filter: blur(50px);
+        }
+
+        .bg-glow-2 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(0,0,0,0) 70%);
+            bottom: -150px;
+            right: -100px;
+            z-index: -1;
+            filter: blur(60px);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 680px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        header {
+            margin-bottom: 35px;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            background: var(--accent-gradient);
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-container::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: rotate(45deg);
+            animation: logo-shimmer 3s infinite linear;
+        }
+
+        @keyframes logo-shimmer {
+            0% { transform: translate(-50%, -50%) rotate(45deg); }
+            100% { transform: translate(50%, 50%) rotate(45deg); }
+        }
+
+        .logo-icon {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            user-select: none;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #ffffff, #d1d5db);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+        }
+
+        .section-title svg {
+            color: var(--accent-primary);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        input[type="url"], input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(10, 11, 18, 0.5);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        input[type="url"]:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+            background: rgba(10, 11, 18, 0.8);
+        }
+
+        .input-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+
+        /* Option Grid Cards */
+        .option-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .option-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .option-card.selected {
+            background: rgba(99, 102, 241, 0.08);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
+        }
+
+        .option-card input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .option-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .option-card-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .option-card-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid var(--text-secondary);
+            margin-left: auto;
+            transition: var(--transition);
+        }
+
+        .option-card.selected .option-card-dot {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 8px var(--accent-primary);
+        }
+
+        /* Conditional Inputs */
+        .conditional-input {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .conditional-input.show {
+            max-height: 100px;
+            opacity: 1;
+            margin-top: 12px;
+        }
+
+        /* Buttons & Footer */
+        .footer {
+            margin-top: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-save {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent-gradient);
+            border: none;
+            border-radius: 14px;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.35);
+            filter: brightness(1.1);
+        }
+
+        .btn-save:active {
+            transform: translateY(0);
+        }
+
+        .btn-save:disabled {
+            background: #27273a;
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .status-msg {
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transition: var(--transition);
+            transform: translateY(5px);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-msg.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .status-msg.success {
+            color: var(--success-color);
+        }
+
+        .status-msg.error {
+            color: var(--error-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px;
+            }
+            .option-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <span class="logo-icon">n8n</span>
+            </div>
+            <h1>image2n8n 설정</h1>
+            <p class="subtitle">이미지 업로드 대상 n8n 웹훅 및 동작 옵션을 구성합니다</p>
+        </header>
+
+        <form id="settings-form">
+            <!-- Webhook URL -->
+            <div class="form-group">
+                <label class="section-title" for="webhook-url">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                    </svg>
+                    n8n Webhook URL
+                </label>
+                <div class="input-wrapper">
+                    <input type="url" id="webhook-url" name="webhookUrl" placeholder="https://n8n.example.com/webhook/..." required>
+                </div>
+                <p class="input-desc">이미지 데이터를 POST 요청으로 전송할 n8n 웹훅 주소를 입력하세요.</p>
+            </div>
+
+            <!-- Success Action -->
+            <div class="form-group">
+                <div class="section-title">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    업로드 성공 시 작업
+                </div>
+                <div class="option-grid">
+                    <label class="option-card" data-group="success">
+                        <input type="radio" name="successAction" value="popup" checked>
+                        <div class="option-card-title">
+                            팝업 메시지 표시
+                            <div class="option-card-dot"></div>
+                        </div>
+                        <div class="option-card-desc">웹페이지 내에 성공 알림(Toast)을 띄웁니다.</div>
+                    </label>
+
+                    <label class="option-card" data-group="success">
+                        <input type="radio" name="successAction" value="response">
+                        <div class="option-card-title">
+                            요청의 응답 표시
+                            <div class="option-card-dot"></div>
+                        </div>
+                        <div class="option-card-desc">웹훅 호출이 리턴한 응답 내용을 화면에 표시합니다.</div>
+                    </label>
+
+                    <label class="option-card" data-group="success">
+                        <input type="radio" name="successAction" value="open_url">
+                        <div class="option-card-title">
+                            특정 URL 열기
+                            <div class="option-card-dot"></div>
+                        </div>
+                        <div class="option-card-desc">업로드 완료 후 지정한 URL을 새 탭에서 엽니다.</div>
+                    </label>
+
+                    <label class="option-card" data-group="success">
+                        <input type="radio" name="successAction" value="none">
+                        <div class="option-card-title">
+                            아무것도 하지 않음
+                            <div class="option-card-dot"></div>
+                        </div>
+                        <div class="option-card-desc">사용자 알림이나 화면 변화 없이 조용히 처리합니다.</div>
+                    </label>
+                </div>
+
+                <div class="conditional-input" id="success-url-wrapper">
+                    <input type="url" id="success-url" name="successUrl" placeholder="https://example.com/dashboard">
+                    <p class="input-desc">이동할 웹페이지 주소를 입력하세요.</p>
+                </div>
+            </div>
+
+            <!-- Failure Action -->
+            <div class="form-group">
+                <div class="section-title">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    업로드 실패 시 작업
+                </div>
+                <div class="option-grid">
+                    <label class="option-card" data-group="failure">
+                        <input type="radio" name="failureAction" value="popup" checked>
+                        <div class="option-card-title">
+                            팝업 메시지 표시
+                            <div class="option-card-dot"></div>
+                        </div>
+                        <div class="option-card-desc">웹페이지 내에 실패 알림(Toast)을 띄웁니다.</div>
+                    </label>
+
+                    <label class="option-card" data-group="failure">
+                        <input type="radio" name="failureAction" value="response">
+                        <div class="option-card-title">
+                            요청의 에러 표시
+                            <div class="option-card-dot"></div>
+                        </div>
+                        <div class="option-card-desc">웹훅 전송 실패 원인 및 에러 메시지를 표시합니다.</div>
+                    </label>
+
+                    <label class="option-card" data-group="failure">
+                        <input type="radio" name="failureAction" value="open_url">
+                        <div class="option-card-title">
+                            특정 URL 열기
+                            <div class="option-card-dot"></div>
+                        </div>
+                        <div class="option-card-desc">에러 발생 시 문제해결 가이드 등 특정 URL을 엽니다.</div>
+                    </label>
+
+                    <label class="option-card" data-group="failure">
+                        <input type="radio" name="failureAction" value="none">
+                        <div class="option-card-title">
+                            아무것도 하지 않음
+                            <div class="option-card-dot"></div>
+                        </div>
+                        <div class="option-card-desc">오류가 발생하더라도 사용자 알림을 띄우지 않습니다.</div>
+                    </label>
+                </div>
+
+                <div class="conditional-input" id="failure-url-wrapper">
+                    <input type="url" id="failure-url" name="failureUrl" placeholder="https://example.com/troubleshoot">
+                    <p class="input-desc">이동할 오류 페이지 주소를 입력하세요.</p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <button type="submit" class="btn-save" id="btn-save">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    설정 저장하기
+                </button>
+                <div class="status-msg" id="status-msg"></div>
+            </div>
+        </form>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+</html>
