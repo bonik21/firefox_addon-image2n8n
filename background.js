@@ -132,16 +132,23 @@ browser.runtime.onMessage.addListener((message, sender) => {
             // 업로드 중 임을 알리는 Toast 표시
             sendToast(tabId, "info", "업로드 중...", `[${targetWebhook.name}] 이미지를 전송하는 중입니다.`);
 
+            const payload = {
+                filename: message.filename || "no_filename.jpg",
+                page_url: message.pageUrl
+            };
+            if (message.data) {
+                payload.image_base64 = message.data;
+            }
+            if (message.imageUrl) {
+                payload.image_url = message.imageUrl;
+            }
+
             fetch(targetWebhook.url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({
-                    image_base64: message.data,
-                    filename: message.filename || "image_fx_.jpg",
-                    page_url: message.pageUrl
-                })
+                body: JSON.stringify(payload)
             })
             .then(async response => {
                 if (response.ok) {
