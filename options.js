@@ -15,10 +15,23 @@ document.addEventListener("DOMContentLoaded", () => {
         successAction: "popup",
         successUrl: "",
         failureAction: "popup",
-        failureUrl: ""
+        failureUrl: "",
+        sendExifData: false
     }).then(items => {
         document.getElementById("success-url").value = items.successUrl;
         document.getElementById("failure-url").value = items.failureUrl;
+
+        // Handle Exif checkbox state
+        const exifCheckbox = document.getElementById("sendExifData");
+        const exifCard = document.getElementById("exif-option-card");
+        if (exifCheckbox && exifCard) {
+            exifCheckbox.checked = items.sendExifData;
+            if (items.sendExifData) {
+                exifCard.classList.add("selected");
+            } else {
+                exifCard.classList.remove("selected");
+            }
+        }
 
         // Select the correct radio buttons
         setRadioValue("successAction", items.successAction);
@@ -91,13 +104,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const successUrl = document.getElementById("success-url").value.trim();
         const failureAction = getRadioValue("failureAction");
         const failureUrl = document.getElementById("failure-url").value.trim();
+        const sendExifData = document.getElementById("sendExifData") ? document.getElementById("sendExifData").checked : false;
 
         browser.storage.local.set({
             webhooks,
             successAction,
             successUrl,
             failureAction,
-            failureUrl
+            failureUrl,
+            sendExifData
         }).then(() => {
             showStatus("설정이 성공적으로 저장되었습니다.", "success");
             saveButton.disabled = false;
@@ -118,6 +133,22 @@ document.addEventListener("DOMContentLoaded", () => {
             updateCardSelection(group);
         });
     });
+
+    // Checkbox cards selection logic
+    const exifCard = document.getElementById("exif-option-card");
+    const exifCheckbox = document.getElementById("sendExifData");
+    if (exifCard && exifCheckbox) {
+        exifCard.addEventListener("click", (e) => {
+            if (e.target !== exifCheckbox) {
+                exifCheckbox.checked = !exifCheckbox.checked;
+            }
+            if (exifCheckbox.checked) {
+                exifCard.classList.add("selected");
+            } else {
+                exifCard.classList.remove("selected");
+            }
+        });
+    }
 });
 
 // Helper to create SVGs programmatically to avoid any innerHTML warnings

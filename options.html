@@ -460,6 +460,71 @@
                 height: 44px;
             }
         }
+
+        /* Checkbox Option Style */
+        .option-card-checkbox {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+            grid-column: span 2;
+        }
+
+        .option-card-checkbox:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .option-card-checkbox.selected {
+            background: rgba(99, 102, 241, 0.08);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
+        }
+
+        .option-card-checkbox input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .option-card-checkbox-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            background: transparent;
+            border: 2px solid var(--text-secondary);
+            margin-left: auto;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .option-card-checkbox.selected .option-card-checkbox-box {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 8px var(--accent-primary);
+        }
+
+        .option-card-checkbox.selected .option-card-checkbox-box::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 8px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+            top: 1px;
+        }
     </style>
 </head>
 <body>
@@ -596,6 +661,26 @@
                 <div class="conditional-input" id="failure-url-wrapper">
                     <input type="url" id="failure-url" name="failureUrl" placeholder="https://example.com/troubleshoot">
                     <p class="input-desc">이동할 오류 페이지 주소를 입력하세요.</p>
+                </div>
+            </div>
+
+            <!-- Metadata Options -->
+            <div class="form-group">
+                <div class="section-title">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    메타데이터 옵션
+                </div>
+                <div class="option-grid">
+                    <label class="option-card-checkbox" id="exif-option-card">
+                        <input type="checkbox" id="sendExifData" name="sendExifData">
+                        <div class="option-card-title">
+                            Exifdata(Title, Description)데이터 전송
+                            <div class="option-card-checkbox-box"></div>
+                        </div>
+                        <div class="option-card-desc">이미지 전송 전에 Exif 메타데이터에서 제목(Title)과 설명(Description)을 추출하여 포함합니다.</div>
+                    </label>
                 </div>
             </div>
 
