@@ -89,6 +89,10 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
                 webhookId: webhookId
             }).catch(err => {
                 console.error("Content script로 메시지 전송 실패:", err);
+                // 탭을 새로 고침하지 않은 경우 발생하는 에러 - 사용자에게 안내
+                sendToast(tab.id, "error", "연결 오류",
+                    "페이지를 새로 고침(F5) 후 다시 시도해 주세요."
+                );
             });
         });
     }
@@ -141,6 +145,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
             }
             if (message.imageUrl) {
                 payload.image_url = message.imageUrl;
+            }
+            // EXIF 메타데이터 (옵션이 활성화된 경우에만 존재)
+            if (message.title) {
+                payload.title = message.title;
+            }
+            if (message.description) {
+                payload.description = message.description;
             }
 
             fetch(targetWebhook.url, {

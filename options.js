@@ -135,13 +135,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Checkbox cards selection logic
+    // label 요소이므로 브라우저가 자동으로 checkbox를 toggle함
+    // change 이벤트로만 UI 상태를 반영
     const exifCard = document.getElementById("exif-option-card");
     const exifCheckbox = document.getElementById("sendExifData");
     if (exifCard && exifCheckbox) {
-        exifCard.addEventListener("click", (e) => {
-            if (e.target !== exifCheckbox) {
-                exifCheckbox.checked = !exifCheckbox.checked;
-            }
+        exifCheckbox.addEventListener("change", () => {
             if (exifCheckbox.checked) {
                 exifCard.classList.add("selected");
             } else {

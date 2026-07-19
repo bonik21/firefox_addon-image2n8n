@@ -1,4 +1,4 @@
-browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+﻿browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "show_toast") {
         showToastNotification(request.type, request.title, request.message);
     } else if (request.action === "convert_and_send") {
@@ -36,388 +36,369 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
+// EXIF 메타데이터 추출 헬퍼
+function extractExifMetadata(tags) {
+    var title = "";
+    var description = "";
+    if (!tags) return { title: title, description: description };
+
+    title = (
+        (tags["Title"] && tags["Title"].description) ||
+        (tags["title"] && tags["title"].description) ||
+        (tags["ObjectName"] && tags["ObjectName"].description) ||
+        (tags["DocumentName"] && tags["DocumentName"].description) ||
+        ""
+    ).toString().trim();
+
+    description = (
+        (tags["Description"] && tags["Description"].description) ||
+        (tags["description"] && tags["description"].description) ||
+        (tags["Caption-Abstract"] && tags["Caption-Abstract"].description) ||
+        (tags["ImageDescription"] && tags["ImageDescription"].description) ||
+        ""
+    ).toString().trim();
+
+    return { title: title, description: description };
+}
+
 // 파일명 편집 및 업로드 방식 선택 팝업창 표시 함수
 function showUploadPopup(srcUrl, initialFilename, webhookId) {
-    // 기존 팝업이 있다면 제거
-    const existing = document.getElementById("image2n8n-popup-root");
-    if (existing) existing.remove();
+    browser.storage.local.get({ sendExifData: false }).then(function(settings) {
+        var isExifEnabled = settings.sendExifData;
 
-    const root = document.createElement("div");
-    root.id = "image2n8n-popup-root";
-    root.style.position = "fixed";
-    root.style.top = "0";
-    root.style.left = "0";
-    root.style.width = "100vw";
-    root.style.height = "100vh";
-    root.style.zIndex = "2147483647";
-    root.style.display = "flex";
-    root.style.alignItems = "center";
-    root.style.justifyContent = "center";
-    root.style.background = "rgba(10, 11, 22, 0.65)";
-    root.style.backdropFilter = "blur(10px)";
-    root.style.webkitBackdropFilter = "blur(10px)";
-    root.style.pointerEvents = "auto";
+        // 기존 팝업이 있다면 제거
+        var existing = document.getElementById("image2n8n-popup-root");
+        if (existing) existing.remove();
 
-    const shadow = root.attachShadow({ mode: "open" });
+        var root = document.createElement("div");
+        root.id = "image2n8n-popup-root";
+        root.style.position = "fixed";
+        root.style.top = "0";
+        root.style.left = "0";
+        root.style.width = "100vw";
+        root.style.height = "100vh";
+        root.style.zIndex = "2147483647";
+        root.style.display = "flex";
+        root.style.alignItems = "center";
+        root.style.justifyContent = "center";
+        root.style.background = "rgba(10, 11, 22, 0.65)";
+        root.style.backdropFilter = "blur(10px)";
+        root.style.webkitBackdropFilter = "blur(10px)";
+        root.style.pointerEvents = "auto";
 
-    const style = document.createElement("style");
-    style.textContent = `
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
-        
-        .modal-card {
-            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
-            width: 440px;
-            max-width: 90%;
-            padding: 30px;
-            border-radius: 24px;
-            background: rgba(20, 21, 38, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            color: #f3f4f6;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            box-sizing: border-box;
-            animation: modalScale 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        var shadow = root.attachShadow({ mode: "open" });
+
+        var style = document.createElement("style");
+        style.textContent = [
+            "@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');",
+            ".modal-card {",
+            "  font-family: 'Outfit', 'Noto Sans KR', sans-serif;",
+            "  width: 440px; max-width: 90vw; max-height: 90vh; overflow-y: auto;",
+            "  padding: 30px; border-radius: 24px;",
+            "  background: rgba(20, 21, 38, 0.92);",
+            "  border: 1px solid rgba(255,255,255,0.08);",
+            "  box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);",
+            "  color: #f3f4f6; display: flex; flex-direction: column; gap: 20px;",
+            "  box-sizing: border-box; animation: modalScale 0.3s cubic-bezier(0.175,0.885,0.32,1.275) forwards;",
+            "  scrollbar-width: thin;",
+            "}",
+            "@keyframes modalScale { from{transform:scale(0.92);opacity:0} to{transform:scale(1);opacity:1} }",
+            ".header { display:flex; justify-content:space-between; align-items:center; }",
+            ".title { font-size:18px; font-weight:700; margin:0;",
+            "  background:linear-gradient(135deg,#6366f1 0%,#a855f7 100%);",
+            "  -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:-0.5px; }",
+            ".btn-close { background:transparent; border:none; color:#6b7280; cursor:pointer;",
+            "  padding:6px; border-radius:8px; display:flex; align-items:center; justify-content:center; transition:all 0.2s; }",
+            ".btn-close:hover { color:#f3f4f6; background:rgba(255,255,255,0.08); }",
+            ".body { display:flex; flex-direction:column; gap:12px; }",
+            ".field-group { display:flex; flex-direction:column; gap:6px; }",
+            ".label { font-size:12px; font-weight:500; color:#9ca3af; }",
+            ".input-text { width:100%; padding:12px 14px; background:rgba(10,11,18,0.5);",
+            "  border:1px solid rgba(255,255,255,0.08); border-radius:12px; color:#fff;",
+            "  font-family:inherit; font-size:14px; box-sizing:border-box; transition:all 0.3s; }",
+            ".input-text:focus { outline:none; border-color:#6366f1;",
+            "  box-shadow:0 0 0 3px rgba(99,102,241,0.15); background:rgba(10,11,18,0.7); }",
+            ".input-text:disabled { opacity:0.45; cursor:not-allowed; }",
+            "textarea.input-text { resize:vertical; min-height:64px; }",
+            ".btn-group { display:flex; gap:12px; margin-top:10px; }",
+            ".btn { flex:1; padding:12px 16px; border-radius:12px; font-family:inherit;",
+            "  font-size:14px; font-weight:600; cursor:pointer; transition:all 0.2s;",
+            "  display:flex; align-items:center; justify-content:center; gap:8px; box-sizing:border-box; }",
+            ".btn-base64 { background:linear-gradient(135deg,#6366f1 0%,#a855f7 100%);",
+            "  border:none; color:#fff; box-shadow:0 4px 15px rgba(99,102,241,0.2); }",
+            ".btn-base64:hover:not(:disabled) { transform:translateY(-2px);",
+            "  box-shadow:0 6px 20px rgba(99,102,241,0.3); filter:brightness(1.1); }",
+            ".btn-url { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#f3f4f6; }",
+            ".btn-url:hover:not(:disabled) { background:rgba(255,255,255,0.1);",
+            "  border-color:rgba(255,255,255,0.2); transform:translateY(-2px); }",
+            ".btn:disabled { opacity:0.5; cursor:not-allowed; transform:none !important; box-shadow:none !important; }",
+            ".error-message { font-size:12px; color:#ef4444; display:none;",
+            "  background:rgba(239,68,68,0.1); padding:10px; border-radius:8px;",
+            "  border:1px solid rgba(239,68,68,0.2); line-height:1.4; }",
+            ".error-message.show { display:block; }",
+            ".image-preview { width:100%; height:120px; border-radius:12px; object-fit:contain;",
+            "  background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.05); margin-bottom:8px; }",
+            ".exif-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }",
+            ".exif-label { font-size:11px; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:0.5px; }",
+            ".exif-badge { font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; transition:all 0.3s; }",
+            ".exif-badge.loading { background:rgba(99,102,241,0.15); color:#a5b4fc; }",
+            ".exif-badge.success { background:rgba(16,185,129,0.15); color:#34d399; }",
+            ".exif-badge.failed  { background:rgba(239,68,68,0.15);  color:#f87171; }",
+            ".exif-badge.manual  { background:rgba(245,158,11,0.15); color:#fbbf24; }",
+            ".exif-divider { height:1px; background:rgba(99,102,241,0.15); margin:4px 0; }"
+        ].join("\n");
+
+        var createSVG = function(pathD, strokeWidth) {
+            strokeWidth = strokeWidth || "2";
+            var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", "16"); svg.setAttribute("height", "16");
+            svg.setAttribute("fill", "none"); svg.setAttribute("stroke", "currentColor");
+            svg.setAttribute("stroke-width", strokeWidth); svg.setAttribute("viewBox", "0 0 24 24");
+            var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("stroke-linecap", "round"); path.setAttribute("stroke-linejoin", "round");
+            path.setAttribute("d", pathD);
+            svg.appendChild(path);
+            return svg;
+        };
+
+        var card = document.createElement("div");
+        card.className = "modal-card";
+
+        var header = document.createElement("div");
+        header.className = "header";
+
+        var titleEl = document.createElement("h3");
+        titleEl.className = "title";
+        titleEl.textContent = "이미지 업로드 설정 (v1.5)";
+
+        var closeBtn = document.createElement("button");
+        closeBtn.className = "btn-close";
+        closeBtn.setAttribute("aria-label", "Close");
+        closeBtn.appendChild(createSVG("M6 18L18 6M6 6l12 12", "2.2"));
+        closeBtn.addEventListener("click", function() { root.remove(); });
+
+        header.appendChild(titleEl);
+        header.appendChild(closeBtn);
+
+        var body = document.createElement("div");
+        body.className = "body";
+
+        if (srcUrl && !srcUrl.startsWith("data:")) {
+            var imgPreview = document.createElement("img");
+            imgPreview.className = "image-preview";
+            imgPreview.src = srcUrl;
+            body.appendChild(imgPreview);
         }
 
-        @keyframes modalScale {
-            from { transform: scale(0.92); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+        // 파일명
+        var fieldGroup = document.createElement("div");
+        fieldGroup.className = "field-group";
+        var lbl = document.createElement("div");
+        lbl.className = "label";
+        lbl.textContent = "저장될 파일 이름";
+        var input = document.createElement("input");
+        input.type = "text"; input.className = "input-text";
+        input.value = initialFilename; input.placeholder = "no_filename";
+        fieldGroup.appendChild(lbl); fieldGroup.appendChild(input);
+        body.appendChild(fieldGroup);
+
+        // EXIF 섹션
+        var titleInput = null;
+        var descInput = null;
+        var exifBadge = null;
+        var cachedBlob = null;
+
+        if (isExifEnabled) {
+            var divider = document.createElement("div");
+            divider.className = "exif-divider";
+            body.appendChild(divider);
+
+            var exifHeader = document.createElement("div");
+            exifHeader.className = "exif-section-header";
+            var exifLabel = document.createElement("span");
+            exifLabel.className = "exif-label";
+            exifLabel.textContent = "Exif 메타데이터";
+            exifBadge = document.createElement("span");
+            exifBadge.className = "exif-badge loading";
+            exifBadge.textContent = "⏳ 분석 중...";
+            exifHeader.appendChild(exifLabel);
+            exifHeader.appendChild(exifBadge);
+            body.appendChild(exifHeader);
+
+            var tg = document.createElement("div"); tg.className = "field-group";
+            var tl = document.createElement("div"); tl.className = "label"; tl.textContent = "제목 (Title)";
+            titleInput = document.createElement("input");
+            titleInput.type = "text"; titleInput.className = "input-text";
+            titleInput.placeholder = "분석 중..."; titleInput.disabled = true;
+            tg.appendChild(tl); tg.appendChild(titleInput); body.appendChild(tg);
+
+            var dg = document.createElement("div"); dg.className = "field-group";
+            var dl = document.createElement("div"); dl.className = "label"; dl.textContent = "설명 (Description)";
+            descInput = document.createElement("textarea");
+            descInput.className = "input-text";
+            descInput.placeholder = "분석 중..."; descInput.disabled = true;
+            dg.appendChild(dl); dg.appendChild(descInput); body.appendChild(dg);
+
+            var doExif = function() {
+                if (!srcUrl || srcUrl.startsWith("data:")) {
+                    titleInput.disabled = false; descInput.disabled = false;
+                    titleInput.placeholder = "제목을 입력하세요";
+                    descInput.placeholder = "설명을 입력하세요";
+                    exifBadge.className = "exif-badge manual";
+                    exifBadge.textContent = "✎ 직접 입력";
+                    return;
+                }
+                fetch(srcUrl)
+                    .then(function(r) {
+                        if (!r.ok) throw new Error("fetch " + r.status);
+                        return r.blob();
+                    })
+                    .then(function(blob) {
+                        cachedBlob = blob;
+                        return new Promise(function(res, rej) {
+                            var fr = new FileReader();
+                            fr.onload = function() { res(fr.result); };
+                            fr.onerror = function() { rej(fr.error); };
+                            fr.readAsArrayBuffer(blob);
+                        });
+                    })
+                    .then(function(buf) {
+                        var tags = null;
+                        try {
+                            if (typeof ExifReader !== "undefined") {
+                                tags = ExifReader.load(buf);
+                            }
+                        } catch(e) { console.warn("ExifReader:", e); }
+
+                        titleInput.disabled = false; descInput.disabled = false;
+                        titleInput.placeholder = "제목을 입력하세요";
+                        descInput.placeholder = "설명을 입력하세요";
+
+                        var meta = extractExifMetadata(tags);
+                        if (meta.title || meta.description) {
+                            titleInput.value = meta.title;
+                            descInput.value = meta.description;
+                            exifBadge.className = "exif-badge success";
+                            exifBadge.textContent = "✓ Exif 추출 완료";
+                        } else {
+                            exifBadge.className = "exif-badge manual";
+                            exifBadge.textContent = "✎ Exif 없음 — 직접 입력";
+                        }
+                    })
+                    .catch(function(err) {
+                        console.warn("EXIF 추출 실패:", err);
+                        titleInput.disabled = false; descInput.disabled = false;
+                        titleInput.placeholder = "제목을 입력하세요";
+                        descInput.placeholder = "설명을 입력하세요";
+                        exifBadge.className = "exif-badge failed";
+                        exifBadge.textContent = "✗ 분석 실패 — 직접 입력";
+                    });
+            };
+            doExif();
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        var errMsg = document.createElement("div");
+        errMsg.className = "error-message";
+        body.appendChild(errMsg);
 
-        .title {
-            font-size: 18px;
-            font-weight: 700;
-            margin: 0;
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
-        }
+        var btnGroup = document.createElement("div");
+        btnGroup.className = "btn-group";
+        var btnBase64 = document.createElement("button");
+        btnBase64.className = "btn btn-base64";
+        btnBase64.textContent = "Base64로 전송";
+        var btnUrl = document.createElement("button");
+        btnUrl.className = "btn btn-url";
+        btnUrl.textContent = "URL로 전송";
+        btnGroup.appendChild(btnBase64); btnGroup.appendChild(btnUrl);
+        body.appendChild(btnGroup);
 
-        .btn-close {
-            background: transparent;
-            border: none;
-            color: #6b7280;
-            cursor: pointer;
-            padding: 6px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
+        card.appendChild(header); card.appendChild(body);
+        shadow.appendChild(style); shadow.appendChild(card);
+        (document.body || document.documentElement).appendChild(root);
 
-        .btn-close:hover {
-            color: #f3f4f6;
-            background: rgba(255, 255, 255, 0.08);
-        }
+        input.focus();
+        var dotIndex = input.value.lastIndexOf(".");
+        if (dotIndex > 0) { input.setSelectionRange(0, dotIndex); } else { input.select(); }
 
-        .body {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        var getMeta = function() {
+            return {
+                title: (isExifEnabled && titleInput) ? titleInput.value.trim() : "",
+                description: (isExifEnabled && descInput) ? descInput.value.trim() : ""
+            };
+        };
 
-        .field-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
+        var disableButtons = function(d) {
+            btnBase64.disabled = d; btnUrl.disabled = d; input.disabled = d;
+            if (titleInput) titleInput.disabled = d;
+            if (descInput) descInput.disabled = d;
+        };
 
-        .label {
-            font-size: 12px;
-            font-weight: 500;
-            color: #9ca3af;
-        }
+        btnBase64.addEventListener("click", function() {
+            var fn = input.value.trim() || "no_filename";
+            var meta = getMeta();
+            disableButtons(true);
+            btnBase64.textContent = "인코딩 중...";
+            errMsg.classList.remove("show");
 
-        .input-text {
-            width: 100%;
-            padding: 12px 14px;
-            background: rgba(10, 11, 18, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            color: #ffffff;
-            font-family: inherit;
-            font-size: 14px;
-            box-sizing: border-box;
-            transition: all 0.3s;
-        }
-
-        .input-text:focus {
-            outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-            background: rgba(10, 11, 18, 0.7);
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 10px;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-family: inherit;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            box-sizing: border-box;
-        }
-
-        .btn-base64 {
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-            border: none;
-            color: #ffffff;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
-        }
-
-        .btn-base64:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
-            filter: brightness(1.1);
-        }
-
-        .btn-url {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #f3f4f6;
-        }
-
-        .btn-url:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
-        .error-message {
-            font-size: 12px;
-            color: #ef4444;
-            display: none;
-            background: rgba(239, 68, 68, 0.1);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            line-height: 1.4;
-        }
-
-        .error-message.show {
-            display: block;
-        }
-
-        .image-preview {
-            width: 100%;
-            height: 120px;
-            border-radius: 12px;
-            object-fit: contain;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            margin-bottom: 8px;
-        }
-    `;
-
-    // Helper SVG creation
-    const createSVG = (pathD, strokeWidth = "2") => {
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        svg.setAttribute("width", "16");
-        svg.setAttribute("height", "16");
-        svg.setAttribute("fill", "none");
-        svg.setAttribute("stroke", "currentColor");
-        svg.setAttribute("stroke-width", strokeWidth);
-        svg.setAttribute("viewBox", "0 0 24 24");
-        
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("stroke-linecap", "round");
-        path.setAttribute("stroke-linejoin", "round");
-        path.setAttribute("d", pathD);
-        
-        svg.appendChild(path);
-        return svg;
-    };
-
-    const card = document.createElement("div");
-    card.className = "modal-card";
-
-    // Header
-    const header = document.createElement("div");
-    header.className = "header";
-
-    const title = document.createElement("h3");
-    title.className = "title";
-    title.textContent = "이미지 업로드 설정 (v1.5)";
-
-    const closeBtn = document.createElement("button");
-    closeBtn.className = "btn-close";
-    closeBtn.setAttribute("aria-label", "Close");
-    closeBtn.appendChild(createSVG("M6 18L18 6M6 6l12 12", "2.2"));
-    closeBtn.addEventListener("click", () => root.remove());
-
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    // Body
-    const body = document.createElement("div");
-    body.className = "body";
-
-    // Image Preview
-    if (srcUrl && !srcUrl.startsWith('data:')) {
-        const imgPreview = document.createElement("img");
-        imgPreview.className = "image-preview";
-        imgPreview.src = srcUrl;
-        body.appendChild(imgPreview);
-    }
-
-    const fieldGroup = document.createElement("div");
-    fieldGroup.className = "field-group";
-
-    const label = document.createElement("div");
-    label.className = "label";
-    label.textContent = "저장될 파일 이름";
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "input-text";
-    input.value = initialFilename;
-    input.placeholder = "no_filename";
-
-    fieldGroup.appendChild(label);
-    fieldGroup.appendChild(input);
-    body.appendChild(fieldGroup);
-
-    // Error Message Area
-    const errMsg = document.createElement("div");
-    errMsg.className = "error-message";
-    body.appendChild(errMsg);
-
-    // Button Group
-    const btnGroup = document.createElement("div");
-    btnGroup.className = "btn-group";
-
-    const btnBase64 = document.createElement("button");
-    btnBase64.className = "btn btn-base64";
-    btnBase64.textContent = "Base64로 전송";
-    
-    const btnUrl = document.createElement("button");
-    btnUrl.className = "btn btn-url";
-    btnUrl.textContent = "URL로 전송";
-
-    btnGroup.appendChild(btnBase64);
-    btnGroup.appendChild(btnUrl);
-    body.appendChild(btnGroup);
-
-    card.appendChild(header);
-    card.appendChild(body);
-
-    shadow.appendChild(style);
-    shadow.appendChild(card);
-    (document.body || document.documentElement).appendChild(root);
-
-    // Focus input and select filename (without extension)
-    input.focus();
-    const dotIndex = input.value.lastIndexOf('.');
-    if (dotIndex > 0) {
-        input.setSelectionRange(0, dotIndex);
-    } else {
-        input.select();
-    }
-
-    // Handlers
-    const disableButtons = (disable) => {
-        btnBase64.disabled = disable;
-        btnUrl.disabled = disable;
-        input.disabled = disable;
-    };
-
-    btnBase64.addEventListener("click", () => {
-        let finalFilename = input.value.trim();
-        if (!finalFilename) {
-            finalFilename = "no_filename";
-        }
-        
-        disableButtons(true);
-        btnBase64.textContent = "인코딩 중...";
-        errMsg.classList.remove("show");
-
-        // Try converting image to base64
-        fetch(srcUrl)
-            .then(response => response.blob())
-            .then(blob => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64Data = reader.result.split(',')[1];
+            var doSend = function(blob) {
+                var reader = new FileReader();
+                reader.onloadend = function() {
+                    var b64 = reader.result.split(",")[1];
                     browser.runtime.sendMessage({
                         action: "upload_to_n8n",
-                        data: base64Data,
-                        filename: finalFilename,
+                        data: b64,
+                        filename: fn,
                         pageUrl: window.location.href,
-                        webhookId: webhookId
+                        webhookId: webhookId,
+                        title: meta.title,
+                        description: meta.description
                     });
                     root.remove();
                 };
                 reader.readAsDataURL(blob);
-            })
-            .catch(err => {
-                console.error("Base64 변환 에러:", err);
-                disableButtons(false);
-                btnBase64.textContent = "Base64로 전송";
-                
-                // Show option to send as URL instead
-                errMsg.textContent = "CORS 정책 또는 보안 설정으로 인해 이미지 데이터를 가져오지 못했습니다. 아래의 [URL로 전송]을 클릭해 보세요.";
-                errMsg.classList.add("show");
-            });
-    });
+            };
 
-    btnUrl.addEventListener("click", () => {
-        let finalFilename = input.value.trim();
-        if (!finalFilename) {
-            finalFilename = "no_filename";
-        }
-
-        disableButtons(true);
-        btnUrl.textContent = "전송 중...";
-
-        browser.runtime.sendMessage({
-            action: "upload_to_n8n",
-            imageUrl: srcUrl,
-            filename: finalFilename,
-            pageUrl: window.location.href,
-            webhookId: webhookId
+            if (cachedBlob) {
+                doSend(cachedBlob);
+            } else {
+                fetch(srcUrl).then(function(r) { return r.blob(); })
+                    .then(function(blob) { doSend(blob); })
+                    .catch(function(err) {
+                        console.error("Base64 변환 에러:", err);
+                        disableButtons(false);
+                        btnBase64.textContent = "Base64로 전송";
+                        errMsg.textContent = "CORS 정책 또는 보안 설정으로 인해 이미지 데이터를 가져오지 못했습니다. 아래의 [URL로 전송]을 클릭해 보세요.";
+                        errMsg.classList.add("show");
+                    });
+            }
         });
-        root.remove();
-    });
-    
-    // Close modal on escape key
-    const escHandler = (e) => {
-        if (e.key === "Escape") {
-            root.remove();
-            document.removeEventListener("keydown", escHandler);
-        }
-    };
-    document.addEventListener("keydown", escHandler);
-}
 
+        btnUrl.addEventListener("click", function() {
+            var fn = input.value.trim() || "no_filename";
+            var meta = getMeta();
+            disableButtons(true);
+            btnUrl.textContent = "전송 중...";
+            browser.runtime.sendMessage({
+                action: "upload_to_n8n",
+                imageUrl: srcUrl,
+                filename: fn,
+                pageUrl: window.location.href,
+                webhookId: webhookId,
+                title: meta.title,
+                description: meta.description
+            });
+            root.remove();
+        });
+
+        var escHandler = function(e) {
+            if (e.key === "Escape") {
+                root.remove();
+                document.removeEventListener("keydown", escHandler);
+            }
+        };
+        document.addEventListener("keydown", escHandler);
+    });
+}
 // 아름다운 Toast 알림 표시 함수 (Shadow DOM으로 독립)
 function showToastNotification(type, title, message) {
     let container = document.getElementById("image2n8n-toast-container");
