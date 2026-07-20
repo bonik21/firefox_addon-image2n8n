@@ -137,9 +137,11 @@ browser.runtime.onMessage.addListener((message, sender) => {
             sendToast(tabId, "info", "업로드 중...", `[${targetWebhook.name}] 이미지를 전송하는 중입니다.`);
 
             const payload = {
-                filename: message.filename || "no_filename.jpg",
                 page_url: message.pageUrl
             };
+            if (message.filename !== undefined) {
+                payload.filename = message.filename;
+            }
             if (message.data) {
                 payload.image_base64 = message.data;
             }

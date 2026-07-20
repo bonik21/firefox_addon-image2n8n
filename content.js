@@ -1,38 +1,30 @@
-﻿browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "show_toast") {
         showToastNotification(request.type, request.title, request.message);
     } else if (request.action === "convert_and_send") {
         const srcUrl = request.srcUrl;
 
-        // 1. 파일명 추출 (실패 시 no_filename)
+        // 1. 파일명 추출
         let filename = "";
-        if (!srcUrl) {
-            filename = "no_filename.jpg";
-        } else if (srcUrl.startsWith('data:')) {
-            const mimeMatch = srcUrl.match(/^data:image\/([a-zA-Z0-9+-]+);base64,/);
-            if (mimeMatch) {
-                let ext = mimeMatch[1];
-                if (ext === 'jpeg') ext = 'jpg';
-                filename = `no_filename.${ext}`;
-            } else {
-                filename = "no_filename.jpg";
-            }
-        } else {
+        let isFilenameExtracted = false;
+        if (srcUrl && !srcUrl.startsWith('data:')) {
             try {
-                filename = srcUrl.split('/').pop().split('?')[0];
-                filename = decodeURIComponent(filename).trim();
+                var parsed = srcUrl.split('/').pop().split('?')[0];
+                parsed = decodeURIComponent(parsed).trim();
+                if (parsed) {
+                    filename = parsed;
+                    if (!filename.includes('.')) {
+                        filename += '.jpg';
+                    }
+                    isFilenameExtracted = true;
+                }
             } catch (e) {
                 filename = "";
-            }
-            if (!filename) {
-                filename = "no_filename.jpg";
-            } else if (!filename.includes('.')) {
-                filename += '.jpg';
             }
         }
 
         // 2. 파일명 편집 및 전송 방식을 위한 팝업창(Modal) 표시
-        showUploadPopup(srcUrl, filename, request.webhookId);
+        showUploadPopup(srcUrl, filename, isFilenameExtracted, request.webhookId);
     }
 });
 
@@ -62,9 +54,10 @@ function extractExifMetadata(tags) {
 }
 
 // 파일명 편집 및 업로드 방식 선택 팝업창 표시 함수
-function showUploadPopup(srcUrl, initialFilename, webhookId) {
-    browser.storage.local.get({ sendExifData: false }).then(function(settings) {
+function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId) {
+    browser.storage.local.get({ sendExifData: false, sendFileName: true }).then(function(settings) {
         var isExifEnabled = settings.sendExifData;
+        var isFileNameEnabled = settings.sendFileName;
 
         // 기존 팝업이 있다면 제거
         var existing = document.getElementById("image2n8n-popup-root");
@@ -145,7 +138,12 @@ function showUploadPopup(srcUrl, initialFilename, webhookId) {
             ".exif-badge.success { background:rgba(16,185,129,0.15); color:#34d399; }",
             ".exif-badge.failed  { background:rgba(239,68,68,0.15);  color:#f87171; }",
             ".exif-badge.manual  { background:rgba(245,158,11,0.15); color:#fbbf24; }",
-            ".exif-divider { height:1px; background:rgba(99,102,241,0.15); margin:4px 0; }"
+            ".exif-divider { height:1px; background:rgba(99,102,241,0.15); margin:4px 0; }",
+            ".filename-section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }",
+            ".filename-label { font-size:11px; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:0.5px; }",
+            ".filename-badge { font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; transition:all 0.3s; }",
+            ".filename-badge.success { background:rgba(16,185,129,0.15); color:#34d399; }",
+            ".filename-badge.manual  { background:rgba(245,158,11,0.15); color:#fbbf24; }"
         ].join("\n");
 
         var createSVG = function(pathD, strokeWidth) {
@@ -169,7 +167,7 @@ function showUploadPopup(srcUrl, initialFilename, webhookId) {
 
         var titleEl = document.createElement("h3");
         titleEl.className = "title";
-        titleEl.textContent = "이미지 업로드 설정 (v1.5)";
+        titleEl.textContent = "이미지 업로드 설정 (v1.6)";
 
         var closeBtn = document.createElement("button");
         closeBtn.className = "btn-close";
@@ -191,16 +189,36 @@ function showUploadPopup(srcUrl, initialFilename, webhookId) {
         }
 
         // 파일명
-        var fieldGroup = document.createElement("div");
-        fieldGroup.className = "field-group";
-        var lbl = document.createElement("div");
-        lbl.className = "label";
-        lbl.textContent = "저장될 파일 이름";
-        var input = document.createElement("input");
-        input.type = "text"; input.className = "input-text";
-        input.value = initialFilename; input.placeholder = "no_filename";
-        fieldGroup.appendChild(lbl); fieldGroup.appendChild(input);
-        body.appendChild(fieldGroup);
+        var fieldGroup = null;
+        var input = null;
+
+        if (isFileNameEnabled) {
+            fieldGroup = document.createElement("div");
+            fieldGroup.className = "field-group";
+
+            var filenameHeader = document.createElement("div");
+            filenameHeader.className = "filename-section-header";
+
+            var filenameLabel = document.createElement("span");
+            filenameLabel.className = "filename-label";
+            filenameLabel.textContent = "저장될 파일 이름";
+
+            var filenameBadge = document.createElement("span");
+            filenameBadge.className = "filename-badge " + (isFilenameExtracted ? "success" : "manual");
+            filenameBadge.textContent = isFilenameExtracted ? "✓ 파일명 추출 완료" : "✎ 직접 입력";
+
+            filenameHeader.appendChild(filenameLabel);
+            filenameHeader.appendChild(filenameBadge);
+            fieldGroup.appendChild(filenameHeader);
+
+            input = document.createElement("input");
+            input.type = "text";
+            input.className = "input-text";
+            input.value = initialFilename;
+            input.placeholder = "파일 이름을 입력하세요 (예: my_image.jpg)";
+            fieldGroup.appendChild(input);
+            body.appendChild(fieldGroup);
+        }
 
         // EXIF 섹션
         var titleInput = null;
@@ -316,9 +334,15 @@ function showUploadPopup(srcUrl, initialFilename, webhookId) {
         shadow.appendChild(style); shadow.appendChild(card);
         (document.body || document.documentElement).appendChild(root);
 
-        input.focus();
-        var dotIndex = input.value.lastIndexOf(".");
-        if (dotIndex > 0) { input.setSelectionRange(0, dotIndex); } else { input.select(); }
+        if (isFileNameEnabled && input) {
+            input.focus();
+            var dotIndex = input.value.lastIndexOf(".");
+            if (dotIndex > 0) { input.setSelectionRange(0, dotIndex); } else { input.select(); }
+        } else if (isExifEnabled && titleInput) {
+            titleInput.focus();
+        } else {
+            btnBase64.focus();
+        }
 
         var getMeta = function() {
             return {
@@ -328,13 +352,29 @@ function showUploadPopup(srcUrl, initialFilename, webhookId) {
         };
 
         var disableButtons = function(d) {
-            btnBase64.disabled = d; btnUrl.disabled = d; input.disabled = d;
+            btnBase64.disabled = d;
+            btnUrl.disabled = d;
+            if (isFileNameEnabled && input) input.disabled = d;
             if (titleInput) titleInput.disabled = d;
             if (descInput) descInput.disabled = d;
         };
 
+        var validateForm = function() {
+            if (isFileNameEnabled && input) {
+                var fn = input.value.trim();
+                if (!fn) {
+                    errMsg.textContent = "저장될 파일 이름을 입력해주세요.";
+                    errMsg.classList.add("show");
+                    input.focus();
+                    return false;
+                }
+            }
+            return true;
+        };
+
         btnBase64.addEventListener("click", function() {
-            var fn = input.value.trim() || "no_filename";
+            if (!validateForm()) return;
+            var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
             var meta = getMeta();
             disableButtons(true);
             btnBase64.textContent = "인코딩 중...";
@@ -374,7 +414,8 @@ function showUploadPopup(srcUrl, initialFilename, webhookId) {
         });
 
         btnUrl.addEventListener("click", function() {
-            var fn = input.value.trim() || "no_filename";
+            if (!validateForm()) return;
+            var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
             var meta = getMeta();
             disableButtons(true);
             btnUrl.textContent = "전송 중...";

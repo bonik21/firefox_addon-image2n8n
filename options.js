@@ -16,7 +16,8 @@ document.addEventListener("DOMContentLoaded", () => {
         successUrl: "",
         failureAction: "popup",
         failureUrl: "",
-        sendExifData: false
+        sendExifData: false,
+        sendFileName: true
     }).then(items => {
         document.getElementById("success-url").value = items.successUrl;
         document.getElementById("failure-url").value = items.failureUrl;
@@ -30,6 +31,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 exifCard.classList.add("selected");
             } else {
                 exifCard.classList.remove("selected");
+            }
+        }
+
+        // Handle Filename checkbox state
+        const filenameCheckbox = document.getElementById("sendFileName");
+        const filenameCard = document.getElementById("filename-option-card");
+        if (filenameCheckbox && filenameCard) {
+            filenameCheckbox.checked = items.sendFileName;
+            if (items.sendFileName) {
+                filenameCard.classList.add("selected");
+            } else {
+                filenameCard.classList.remove("selected");
             }
         }
 
@@ -105,6 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const failureAction = getRadioValue("failureAction");
         const failureUrl = document.getElementById("failure-url").value.trim();
         const sendExifData = document.getElementById("sendExifData") ? document.getElementById("sendExifData").checked : false;
+        const sendFileName = document.getElementById("sendFileName") ? document.getElementById("sendFileName").checked : false;
 
         browser.storage.local.set({
             webhooks,
@@ -112,7 +126,8 @@ document.addEventListener("DOMContentLoaded", () => {
             successUrl,
             failureAction,
             failureUrl,
-            sendExifData
+            sendExifData,
+            sendFileName
         }).then(() => {
             showStatus("설정이 성공적으로 저장되었습니다.", "success");
             saveButton.disabled = false;
@@ -145,6 +160,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 exifCard.classList.add("selected");
             } else {
                 exifCard.classList.remove("selected");
+            }
+        });
+    }
+
+    const filenameCard = document.getElementById("filename-option-card");
+    const filenameCheckbox = document.getElementById("sendFileName");
+    if (filenameCard && filenameCheckbox) {
+        filenameCheckbox.addEventListener("change", () => {
+            if (filenameCheckbox.checked) {
+                filenameCard.classList.add("selected");
+            } else {
+                filenameCard.classList.remove("selected");
             }
         });
     }
