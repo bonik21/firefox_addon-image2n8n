@@ -55,9 +55,18 @@ function extractExifMetadata(tags) {
 
 // 파일명 편집 및 업로드 방식 선택 팝업창 표시 함수
 function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId) {
-    browser.storage.local.get({ sendExifData: false, sendFileName: true }).then(function (settings) {
+    browser.storage.local.get({
+        sendExifData: false,
+        sendFileName: true,
+        webhooks: [],
+        webhookUrl: ""
+    }).then(function (settings) {
         var isExifEnabled = settings.sendExifData;
         var isFileNameEnabled = settings.sendFileName;
+        var webhooks = settings.webhooks || [];
+        if (webhooks.length === 0 && settings.webhookUrl) {
+            webhooks = [{ id: "default", name: "이미지 업로드(to n8n)", url: settings.webhookUrl }];
+        }
 
         // 기존 팝업이 있다면 제거
         var existing = document.getElementById("image2n8n-popup-root");
@@ -112,6 +121,8 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             ".input-text:focus { outline:none; border-color:#6366f1;",
             "  box-shadow:0 0 0 3px rgba(99,102,241,0.15); background:rgba(10,11,18,0.7); }",
             ".input-text:disabled { opacity:0.45; cursor:not-allowed; }",
+            "select.input-text { cursor:pointer; }",
+            "select.input-text option { background:#141526; color:#fff; }",
             "textarea.input-text { resize:vertical; min-height:64px; }",
             ".btn-group { display:flex; gap:12px; margin-top:10px; }",
             ".btn { flex:1; padding:12px 16px; border-radius:12px; font-family:inherit;",
@@ -171,7 +182,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
 
         var titleEl = document.createElement("h3");
         titleEl.className = "title";
-        titleEl.textContent = "이미지 업로드 설정 (v1.7)";
+        titleEl.textContent = "이미지 업로드 설정 (v1.8)";
 
         var closeBtn = document.createElement("button");
         closeBtn.className = "btn-close";
@@ -190,6 +201,34 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             imgPreview.className = "image-preview";
             imgPreview.src = srcUrl;
             body.appendChild(imgPreview);
+        }
+
+        // Webhook 선택 드롭다운 (배지 클릭 및 팝업 호출 시 대상 웹훅을 손쉽게 확인/선택)
+        var webhookSelect = null;
+        if (webhooks.length > 0) {
+            var whGroup = document.createElement("div");
+            whGroup.className = "field-group";
+
+            var whLabel = document.createElement("div");
+            whLabel.className = "label";
+            whLabel.textContent = "전송 대상 n8n 웹훅";
+
+            webhookSelect = document.createElement("select");
+            webhookSelect.className = "input-text";
+
+            webhooks.forEach(function (wh, index) {
+                var opt = document.createElement("option");
+                opt.value = wh.id;
+                opt.textContent = wh.name || ("n8n 전송 " + (index + 1));
+                if (webhookId && wh.id === webhookId) {
+                    opt.selected = true;
+                }
+                webhookSelect.appendChild(opt);
+            });
+
+            whGroup.appendChild(whLabel);
+            whGroup.appendChild(webhookSelect);
+            body.appendChild(whGroup);
         }
 
         // 파일명
@@ -351,6 +390,19 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             btnBase64.focus();
         }
 
+        var getTargetWebhookId = function () {
+            if (webhookSelect && webhookSelect.value) {
+                return webhookSelect.value;
+            }
+            if (webhookId) {
+                return webhookId;
+            }
+            if (webhooks.length > 0) {
+                return webhooks[0].id;
+            }
+            return "default";
+        };
+
         var getMeta = function () {
             return {
                 title: (isExifEnabled && titleInput) ? titleInput.value.trim() : "",
@@ -365,6 +417,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             if (isFileNameEnabled && input) input.disabled = d;
             if (titleInput) titleInput.disabled = d;
             if (descInput) descInput.disabled = d;
+            if (webhookSelect) webhookSelect.disabled = d;
         };
 
         var validateForm = function () {
@@ -384,6 +437,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             if (!validateForm()) return;
             var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
             var meta = getMeta();
+            var targetWhId = getTargetWebhookId();
             disableButtons(true);
             btnBase64.textContent = "인코딩 중...";
             errMsg.classList.remove("show");
@@ -397,7 +451,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                         data: b64,
                         filename: fn,
                         pageUrl: window.location.href,
-                        webhookId: webhookId,
+                        webhookId: targetWhId,
                         title: meta.title,
                         description: meta.description
                     });
@@ -425,6 +479,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             if (!validateForm()) return;
             var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
             var meta = getMeta();
+            var targetWhId = getTargetWebhookId();
             disableButtons(true);
             btnBinary.textContent = "전송 중...";
             errMsg.classList.remove("show");
@@ -441,7 +496,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                         mimeType: mimeType,
                         filename: fn,
                         pageUrl: window.location.href,
-                        webhookId: webhookId,
+                        webhookId: targetWhId,
                         title: meta.title,
                         description: meta.description
                     });
@@ -469,6 +524,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             if (!validateForm()) return;
             var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
             var meta = getMeta();
+            var targetWhId = getTargetWebhookId();
             disableButtons(true);
             btnUrl.textContent = "전송 중...";
             browser.runtime.sendMessage({
@@ -476,7 +532,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                 imageUrl: srcUrl,
                 filename: fn,
                 pageUrl: window.location.href,
-                webhookId: webhookId,
+                webhookId: targetWhId,
                 title: meta.title,
                 description: meta.description
             });
@@ -806,3 +862,329 @@ function showToastNotification(type, title, message) {
         autoDismissTimeout = setTimeout(dismiss, 2000);
     });
 }
+
+/* ==========================================================================
+   Image Badge Overlay Manager (모바일/터치 지원 이미지 모서리 전송 배지)
+   ========================================================================== */
+
+(function () {
+    let badgeObserver = null;
+    let currentSettings = null;
+
+    const isTouchDevice = () => {
+        return (
+            window.matchMedia('(pointer: coarse)').matches ||
+            ('ontouchstart' in window) ||
+            (navigator.maxTouchPoints > 0) ||
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        );
+    };
+
+    const shouldEnableBadges = (mode) => {
+        if (mode === "never") return false;
+        if (mode === "auto") return isTouchDevice();
+        return true; // "always" default
+    };
+
+    function attachBadgeToImage(img, settings) {
+        if (!img || !img.parentElement || img.dataset.image2n8nBadged === "true") return;
+
+        // SVG data URI 또는 지나치게 작은 아이콘(50x50 미만)은 배지 부착 제외
+        const src = img.currentSrc || img.src;
+        if (!src || src.startsWith("data:image/svg")) return;
+
+        const w = img.clientWidth || img.naturalWidth || img.width;
+        const h = img.clientHeight || img.naturalHeight || img.height;
+        if (w > 0 && h > 0 && (w < 50 || h < 50)) return;
+
+        const parent = img.parentElement;
+        const isStandalone = (
+            parent === document.body ||
+            (document.contentType && document.contentType.startsWith("image/")) ||
+            (document.body && document.body.children.length <= 2 && document.querySelector("body > img") === img)
+        );
+
+        if (!isStandalone) {
+            // 일반 웹페이지: 부모의 position이 static이면 relative로 전환
+            try {
+                const computed = window.getComputedStyle(parent);
+                if (computed.position === "static") {
+                    parent.style.position = "relative";
+                }
+            } catch (e) {}
+        }
+
+        img.dataset.image2n8nBadged = "true";
+
+        const badgeHost = document.createElement("div");
+        badgeHost.className = "image2n8n-badge-host";
+        badgeHost.style.zIndex = "2147483640";
+        badgeHost.style.pointerEvents = "auto";
+        badgeHost.style.userSelect = "none";
+        badgeHost.style.webkitUserSelect = "none";
+        badgeHost.style.lineHeight = "0";
+
+        const sizePx = settings.badgeSize === "small" ? 24 : (settings.badgeSize === "large" ? 38 : 30);
+        const iconSize = settings.badgeSize === "small" ? 13 : (settings.badgeSize === "large" ? 20 : 16);
+        const opacity = settings.badgeOpacity !== undefined ? settings.badgeOpacity : 0.8;
+        const pos = settings.badgePosition || "top-right";
+
+        if (isStandalone) {
+            // 이미지 단독 URL (Firefox TopLevelImageDocument / body flex 중앙정렬 환경)
+            // body 스타일을 변경하지 않고 fixed 오버레이로 이미지 좌표에 밀착
+            badgeHost.style.position = "fixed";
+
+            const updateFixedPos = () => {
+                const rect = img.getBoundingClientRect();
+                if (rect.width === 0 || rect.height === 0) return;
+                const offset = 8;
+
+                if (pos === "top-left") {
+                    badgeHost.style.top = (rect.top + offset) + "px";
+                    badgeHost.style.left = (rect.left + offset) + "px";
+                } else if (pos === "bottom-right") {
+                    badgeHost.style.top = (rect.bottom - sizePx - offset) + "px";
+                    badgeHost.style.left = (rect.right - sizePx - offset) + "px";
+                } else if (pos === "bottom-left") {
+                    badgeHost.style.top = (rect.bottom - sizePx - offset) + "px";
+                    badgeHost.style.left = (rect.left + offset) + "px";
+                } else { // top-right
+                    badgeHost.style.top = (rect.top + offset) + "px";
+                    badgeHost.style.left = (rect.right - sizePx - offset) + "px";
+                }
+            };
+
+            updateFixedPos();
+            window.addEventListener("resize", updateFixedPos, { passive: true });
+            window.addEventListener("scroll", updateFixedPos, { passive: true });
+            img.addEventListener("click", () => setTimeout(updateFixedPos, 50)); // Firefox 확대/축소 클릭 대응
+            if (typeof ResizeObserver !== "undefined") {
+                const ro = new ResizeObserver(updateFixedPos);
+                ro.observe(img);
+            }
+        } else {
+            // 일반 웹페이지: 이미지 바로 옆에 absolute로 부착
+            badgeHost.style.position = "absolute";
+            if (pos === "top-left") {
+                badgeHost.style.top = "6px";
+                badgeHost.style.left = "6px";
+                badgeHost.style.right = "auto";
+                badgeHost.style.bottom = "auto";
+            } else if (pos === "bottom-right") {
+                badgeHost.style.bottom = "6px";
+                badgeHost.style.right = "6px";
+                badgeHost.style.top = "auto";
+                badgeHost.style.left = "auto";
+            } else if (pos === "bottom-left") {
+                badgeHost.style.bottom = "6px";
+                badgeHost.style.left = "6px";
+                badgeHost.style.top = "auto";
+                badgeHost.style.right = "auto";
+            } else {
+                badgeHost.style.top = "6px";
+                badgeHost.style.right = "6px";
+                badgeHost.style.left = "auto";
+                badgeHost.style.bottom = "auto";
+            }
+        }
+
+        const shadow = badgeHost.attachShadow({ mode: "open" });
+
+        const style = document.createElement("style");
+        style.textContent = `
+            .badge-btn {
+                width: ${sizePx}px;
+                height: ${sizePx}px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+                border: 1px solid rgba(255, 255, 255, 0.35);
+                box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #ffffff;
+                cursor: pointer;
+                opacity: ${opacity};
+                transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+                padding: 0;
+                margin: 0;
+                outline: none;
+                box-sizing: border-box;
+            }
+            .badge-btn:hover {
+                opacity: 1;
+                transform: scale(1.1);
+                box-shadow: 0 4px 16px rgba(99, 102, 241, 0.5);
+            }
+            .badge-btn:active {
+                opacity: 1;
+                transform: scale(0.92);
+                box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+            }
+        `;
+
+        const btn = document.createElement("button");
+        btn.className = "badge-btn";
+        btn.setAttribute("type", "button");
+        btn.setAttribute("title", "n8n으로 이미지 전송 (image2n8n)");
+        btn.setAttribute("aria-label", "Send image to n8n");
+
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("width", iconSize);
+        svg.setAttribute("height", iconSize);
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("stroke", "currentColor");
+        svg.setAttribute("stroke-width", "2.4");
+        svg.setAttribute("viewBox", "0 0 24 24");
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("stroke-linejoin", "round");
+        path.setAttribute("d", "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12");
+
+        svg.appendChild(path);
+        btn.appendChild(svg);
+
+        // 링크 이동이나 브라우저 기본 확대 제스처가 간섭받지 않도록 배지 터치 이벤트 전파 완전 차단
+        ["touchstart", "touchend", "touchcancel", "pointerdown", "pointerup", "mousedown", "mouseup", "contextmenu"].forEach(evtName => {
+            btn.addEventListener(evtName, (e) => {
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }, { passive: false, capture: true });
+        });
+
+        let lastTriggerTime = 0;
+        const onTrigger = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+            const now = Date.now();
+            if (now - lastTriggerTime < 600) return; // 디바운스
+            lastTriggerTime = now;
+
+            const currentSrc = img.currentSrc || img.src;
+            let filename = "";
+            let isExtracted = false;
+            if (currentSrc && !currentSrc.startsWith("data:")) {
+                try {
+                    let parsed = currentSrc.split("/").pop().split("?")[0];
+                    parsed = decodeURIComponent(parsed).trim();
+                    if (parsed) {
+                        filename = parsed;
+                        if (!filename.includes(".")) filename += ".jpg";
+                        isExtracted = true;
+                    }
+                } catch (err) {
+                    filename = "";
+                }
+            }
+
+            showUploadPopup(currentSrc, filename, isExtracted);
+        };
+
+        btn.addEventListener("click", onTrigger);
+
+        shadow.appendChild(style);
+        shadow.appendChild(btn);
+
+        // 이미지 바로 뒤 또는 body에 부착
+        if (isStandalone) {
+            (document.body || document.documentElement).appendChild(badgeHost);
+        } else {
+            img.insertAdjacentElement("afterend", badgeHost);
+        }
+    }
+
+    function removeAllBadges() {
+        if (badgeObserver) {
+            badgeObserver.disconnect();
+            badgeObserver = null;
+        }
+        document.querySelectorAll(".image2n8n-badge-host").forEach(el => el.remove());
+        document.querySelectorAll("img[data-image2n8n-badged]").forEach(img => {
+            delete img.dataset.image2n8nBadged;
+        });
+    }
+
+    function scanAndAttachBadges(settings) {
+        const images = document.querySelectorAll("img");
+        images.forEach(img => {
+            if (img.complete) {
+                attachBadgeToImage(img, settings);
+            } else {
+                img.addEventListener("load", () => attachBadgeToImage(img, settings), { once: true });
+            }
+        });
+    }
+
+    function startBadgeObserver(settings) {
+        if (badgeObserver) badgeObserver.disconnect();
+        badgeObserver = new MutationObserver(mutations => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.tagName === "IMG") {
+                            if (node.complete) {
+                                attachBadgeToImage(node, settings);
+                            } else {
+                                node.addEventListener("load", () => attachBadgeToImage(node, settings), { once: true });
+                            }
+                        } else {
+                            const nestedImgs = node.querySelectorAll ? node.querySelectorAll("img") : [];
+                            nestedImgs.forEach(img => {
+                                if (img.complete) {
+                                    attachBadgeToImage(img, settings);
+                                } else {
+                                    img.addEventListener("load", () => attachBadgeToImage(img, settings), { once: true });
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        });
+
+        badgeObserver.observe(document.body || document.documentElement, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    function initImageBadgeManager() {
+        browser.storage.local.get({
+            badgeMode: "always",
+            badgeOpacity: 0.8,
+            badgeSize: "medium",
+            badgePosition: "top-right"
+        }).then(settings => {
+            currentSettings = settings;
+            removeAllBadges();
+
+            if (!shouldEnableBadges(settings.badgeMode)) {
+                return;
+            }
+
+            scanAndAttachBadges(settings);
+            startBadgeObserver(settings);
+        }).catch(err => {
+            console.warn("배지 설정 로드 실패:", err);
+        });
+    }
+
+    // 설정 변경 시 실시간 동기화
+    browser.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === "local" && (changes.badgeMode || changes.badgeOpacity || changes.badgeSize || changes.badgePosition)) {
+            initImageBadgeManager();
+        }
+    });
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initImageBadgeManager);
+    } else {
+        initImageBadgeManager();
+    }
+})();

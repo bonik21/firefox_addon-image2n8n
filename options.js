@@ -8,6 +8,78 @@ document.addEventListener("DOMContentLoaded", () => {
         container.appendChild(createWebhookItemDOM(id));
     });
 
+    // State variables for badge customization
+    let currentBadgeSize = "medium";
+    let currentBadgePosition = "top-right";
+
+    const badgeOpacitySlider = document.getElementById("badgeOpacity");
+    const opacityLabel = document.getElementById("opacity-val-label");
+    const previewBadge = document.getElementById("preview-badge");
+    const badgeSubSettings = document.getElementById("badge-sub-settings");
+
+    function updateBadgePreview() {
+        if (!previewBadge) return;
+        const opacity = badgeOpacitySlider ? parseFloat(badgeOpacitySlider.value) : 0.8;
+        if (opacityLabel) opacityLabel.textContent = Math.round(opacity * 100) + "%";
+        previewBadge.style.opacity = opacity;
+
+        // Size mapping
+        let sizePx = 30;
+        let iconSizePx = 16;
+        if (currentBadgeSize === "small") { sizePx = 24; iconSizePx = 13; }
+        else if (currentBadgeSize === "large") { sizePx = 38; iconSizePx = 20; }
+
+        previewBadge.style.width = sizePx + "px";
+        previewBadge.style.height = sizePx + "px";
+
+        const icon = document.getElementById("preview-badge-icon");
+        if (icon) {
+            icon.setAttribute("width", iconSizePx);
+            icon.setAttribute("height", iconSizePx);
+        }
+
+        // Position classes
+        previewBadge.className = `preview-badge preview-badge-${currentBadgePosition}`;
+
+        // Toggle sub settings visibility based on badge mode
+        const mode = getRadioValue("badgeMode");
+        if (badgeSubSettings) {
+            badgeSubSettings.style.display = mode === "never" ? "none" : "flex";
+        }
+    }
+
+    if (badgeOpacitySlider) {
+        badgeOpacitySlider.addEventListener("input", updateBadgePreview);
+    }
+
+    // Segmented button listeners
+    document.querySelectorAll(".segment-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const type = btn.dataset.type;
+            const val = btn.dataset.val;
+            const parent = btn.parentElement;
+
+            parent.querySelectorAll(".segment-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            if (type === "badgeSize") {
+                currentBadgeSize = val;
+            } else if (type === "badgePosition") {
+                currentBadgePosition = val;
+            }
+            updateBadgePreview();
+        });
+    });
+
+    // Display extension version
+    try {
+        const manifest = browser.runtime.getManifest();
+        const versionEl = document.getElementById("app-version");
+        if (versionEl && manifest && manifest.version) {
+            versionEl.textContent = `v${manifest.version}`;
+        }
+    } catch (e) {}
+
     // Load saved settings
     browser.storage.local.get({
         webhookUrl: "", // deprecated legacy single url
@@ -17,7 +89,11 @@ document.addEventListener("DOMContentLoaded", () => {
         failureAction: "popup",
         failureUrl: "",
         sendExifData: false,
-        sendFileName: true
+        sendFileName: true,
+        badgeMode: "always",
+        badgeOpacity: 0.8,
+        badgeSize: "medium",
+        badgePosition: "top-right"
     }).then(items => {
         document.getElementById("success-url").value = items.successUrl;
         document.getElementById("failure-url").value = items.failureUrl;
@@ -46,13 +122,30 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
+        // Badge settings
+        currentBadgeSize = items.badgeSize || "medium";
+        currentBadgePosition = items.badgePosition || "top-right";
+        if (badgeOpacitySlider) {
+            badgeOpacitySlider.value = items.badgeOpacity !== undefined ? items.badgeOpacity : 0.8;
+        }
+
+        // Update active classes on segmented buttons
+        document.querySelectorAll(`.segment-btn[data-type="badgeSize"]`).forEach(b => {
+            b.classList.toggle("active", b.dataset.val === currentBadgeSize);
+        });
+        document.querySelectorAll(`.segment-btn[data-type="badgePosition"]`).forEach(b => {
+            b.classList.toggle("active", b.dataset.val === currentBadgePosition);
+        });
 
         // Select the correct radio buttons
         setRadioValue("successAction", items.successAction);
         setRadioValue("failureAction", items.failureAction);
+        setRadioValue("badgeMode", items.badgeMode || "always");
 
         updateCardSelection("success");
         updateCardSelection("failure");
+        updateCardSelection("badge");
+        updateBadgePreview();
 
         // Load webhooks list
         let webhooks = items.webhooks;
@@ -126,6 +219,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const failureUrl = document.getElementById("failure-url").value.trim();
         const sendExifData = document.getElementById("sendExifData") ? document.getElementById("sendExifData").checked : false;
         const sendFileName = document.getElementById("sendFileName") ? document.getElementById("sendFileName").checked : false;
+        const badgeMode = getRadioValue("badgeMode") || "always";
+        const badgeOpacity = badgeOpacitySlider ? parseFloat(badgeOpacitySlider.value) : 0.8;
+        const badgeSize = currentBadgeSize || "medium";
+        const badgePosition = currentBadgePosition || "top-right";
 
         browser.storage.local.set({
             webhooks,
@@ -134,7 +231,11 @@ document.addEventListener("DOMContentLoaded", () => {
             failureAction,
             failureUrl,
             sendExifData,
-            sendFileName
+            sendFileName,
+            badgeMode,
+            badgeOpacity,
+            badgeSize,
+            badgePosition
         }).then(() => {
             showStatus("설정이 성공적으로 저장되었습니다.", "success");
             saveButton.disabled = false;
@@ -151,14 +252,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const radio = card.querySelector('input[type="radio"]');
             radio.checked = true;
 
-            const group = card.dataset.group; // 'success' or 'failure'
+            const group = card.dataset.group; // 'success' or 'failure' or 'badge'
             updateCardSelection(group);
+            if (group === "badge") {
+                updateBadgePreview();
+            }
         });
     });
 
     // Checkbox cards selection logic
-    // label 요소이므로 브라우저가 자동으로 checkbox를 toggle함
-    // change 이벤트로만 UI 상태를 반영
     const exifCard = document.getElementById("exif-option-card");
     const exifCheckbox = document.getElementById("sendExifData");
     if (exifCard && exifCheckbox) {
@@ -358,17 +460,19 @@ function updateCardSelection(group) {
         }
     });
 
-    // Handle conditional URLs
-    const selectedAction = getRadioValue(group + "Action");
+    // Handle conditional URLs only for groups that have url inputs
     const urlWrapper = document.getElementById(group + "-url-wrapper");
     const urlInput = document.getElementById(group + "-url");
 
-    if (selectedAction === "open_url") {
-        urlWrapper.classList.add("show");
-        urlInput.required = true;
-    } else {
-        urlWrapper.classList.remove("show");
-        urlInput.required = false;
+    if (urlWrapper && urlInput) {
+        const selectedAction = getRadioValue(group + "Action");
+        if (selectedAction === "open_url") {
+            urlWrapper.classList.add("show");
+            urlInput.required = true;
+        } else {
+            urlWrapper.classList.remove("show");
+            urlInput.required = false;
+        }
     }
 }
 
