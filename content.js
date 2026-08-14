@@ -55,7 +55,7 @@ function extractExifMetadata(tags) {
 
 // 파일명 편집 및 업로드 방식 선택 팝업창 표시 함수
 function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId) {
-    browser.storage.local.get({ sendExifData: false, sendFileName: true }).then(function(settings) {
+    browser.storage.local.get({ sendExifData: false, sendFileName: true }).then(function (settings) {
         var isExifEnabled = settings.sendExifData;
         var isFileNameEnabled = settings.sendFileName;
 
@@ -143,10 +143,14 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             ".filename-label { font-size:11px; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:0.5px; }",
             ".filename-badge { font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; transition:all 0.3s; }",
             ".filename-badge.success { background:rgba(16,185,129,0.15); color:#34d399; }",
-            ".filename-badge.manual  { background:rgba(245,158,11,0.15); color:#fbbf24; }"
+            ".filename-badge.manual  { background:rgba(245,158,11,0.15); color:#fbbf24; }",
+            ".btn-binary { background:linear-gradient(135deg,#0891b2 0%,#0e7490 100%);",
+            "  border:none; color:#fff; box-shadow:0 4px 15px rgba(8,145,178,0.2); }",
+            ".btn-binary:hover:not(:disabled) { transform:translateY(-2px);",
+            "  box-shadow:0 6px 20px rgba(8,145,178,0.3); filter:brightness(1.1); }"
         ].join("\n");
 
-        var createSVG = function(pathD, strokeWidth) {
+        var createSVG = function (pathD, strokeWidth) {
             strokeWidth = strokeWidth || "2";
             var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("width", "16"); svg.setAttribute("height", "16");
@@ -167,13 +171,13 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
 
         var titleEl = document.createElement("h3");
         titleEl.className = "title";
-        titleEl.textContent = "이미지 업로드 설정 (v1.6)";
+        titleEl.textContent = "이미지 업로드 설정 (v1.7)";
 
         var closeBtn = document.createElement("button");
         closeBtn.className = "btn-close";
         closeBtn.setAttribute("aria-label", "Close");
         closeBtn.appendChild(createSVG("M6 18L18 6M6 6l12 12", "2.2"));
-        closeBtn.addEventListener("click", function() { root.remove(); });
+        closeBtn.addEventListener("click", function () { root.remove(); });
 
         header.appendChild(titleEl);
         header.appendChild(closeBtn);
@@ -257,7 +261,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             descInput.placeholder = "분석 중..."; descInput.disabled = true;
             dg.appendChild(dl); dg.appendChild(descInput); body.appendChild(dg);
 
-            var doExif = function() {
+            var doExif = function () {
                 if (!srcUrl || srcUrl.startsWith("data:")) {
                     titleInput.disabled = false; descInput.disabled = false;
                     titleInput.placeholder = "제목을 입력하세요";
@@ -267,26 +271,26 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                     return;
                 }
                 fetch(srcUrl)
-                    .then(function(r) {
+                    .then(function (r) {
                         if (!r.ok) throw new Error("fetch " + r.status);
                         return r.blob();
                     })
-                    .then(function(blob) {
+                    .then(function (blob) {
                         cachedBlob = blob;
-                        return new Promise(function(res, rej) {
+                        return new Promise(function (res, rej) {
                             var fr = new FileReader();
-                            fr.onload = function() { res(fr.result); };
-                            fr.onerror = function() { rej(fr.error); };
+                            fr.onload = function () { res(fr.result); };
+                            fr.onerror = function () { rej(fr.error); };
                             fr.readAsArrayBuffer(blob);
                         });
                     })
-                    .then(function(buf) {
+                    .then(function (buf) {
                         var tags = null;
                         try {
                             if (typeof ExifReader !== "undefined") {
                                 tags = ExifReader.load(buf);
                             }
-                        } catch(e) { console.warn("ExifReader:", e); }
+                        } catch (e) { console.warn("ExifReader:", e); }
 
                         titleInput.disabled = false; descInput.disabled = false;
                         titleInput.placeholder = "제목을 입력하세요";
@@ -303,7 +307,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                             exifBadge.textContent = "✎ Exif 없음 — 직접 입력";
                         }
                     })
-                    .catch(function(err) {
+                    .catch(function (err) {
                         console.warn("EXIF 추출 실패:", err);
                         titleInput.disabled = false; descInput.disabled = false;
                         titleInput.placeholder = "제목을 입력하세요";
@@ -323,11 +327,14 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
         btnGroup.className = "btn-group";
         var btnBase64 = document.createElement("button");
         btnBase64.className = "btn btn-base64";
-        btnBase64.textContent = "Base64로 전송";
+        btnBase64.textContent = "Base64 전송";
+        var btnBinary = document.createElement("button");
+        btnBinary.className = "btn btn-binary";
+        btnBinary.textContent = "Binary 전송";
         var btnUrl = document.createElement("button");
         btnUrl.className = "btn btn-url";
         btnUrl.textContent = "URL로 전송";
-        btnGroup.appendChild(btnBase64); btnGroup.appendChild(btnUrl);
+        btnGroup.appendChild(btnBase64); btnGroup.appendChild(btnBinary); btnGroup.appendChild(btnUrl);
         body.appendChild(btnGroup);
 
         card.appendChild(header); card.appendChild(body);
@@ -344,22 +351,23 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             btnBase64.focus();
         }
 
-        var getMeta = function() {
+        var getMeta = function () {
             return {
                 title: (isExifEnabled && titleInput) ? titleInput.value.trim() : "",
                 description: (isExifEnabled && descInput) ? descInput.value.trim() : ""
             };
         };
 
-        var disableButtons = function(d) {
+        var disableButtons = function (d) {
             btnBase64.disabled = d;
+            btnBinary.disabled = d;
             btnUrl.disabled = d;
             if (isFileNameEnabled && input) input.disabled = d;
             if (titleInput) titleInput.disabled = d;
             if (descInput) descInput.disabled = d;
         };
 
-        var validateForm = function() {
+        var validateForm = function () {
             if (isFileNameEnabled && input) {
                 var fn = input.value.trim();
                 if (!fn) {
@@ -372,7 +380,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             return true;
         };
 
-        btnBase64.addEventListener("click", function() {
+        btnBase64.addEventListener("click", function () {
             if (!validateForm()) return;
             var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
             var meta = getMeta();
@@ -380,9 +388,9 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             btnBase64.textContent = "인코딩 중...";
             errMsg.classList.remove("show");
 
-            var doSend = function(blob) {
+            var doSend = function (blob) {
                 var reader = new FileReader();
-                reader.onloadend = function() {
+                reader.onloadend = function () {
                     var b64 = reader.result.split(",")[1];
                     browser.runtime.sendMessage({
                         action: "upload_to_n8n",
@@ -401,19 +409,63 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             if (cachedBlob) {
                 doSend(cachedBlob);
             } else {
-                fetch(srcUrl).then(function(r) { return r.blob(); })
-                    .then(function(blob) { doSend(blob); })
-                    .catch(function(err) {
+                fetch(srcUrl).then(function (r) { return r.blob(); })
+                    .then(function (blob) { doSend(blob); })
+                    .catch(function (err) {
                         console.error("Base64 변환 에러:", err);
                         disableButtons(false);
-                        btnBase64.textContent = "Base64로 전송";
+                        btnBase64.textContent = "Base64 전송";
                         errMsg.textContent = "CORS 정책 또는 보안 설정으로 인해 이미지 데이터를 가져오지 못했습니다. 아래의 [URL로 전송]을 클릭해 보세요.";
                         errMsg.classList.add("show");
                     });
             }
         });
 
-        btnUrl.addEventListener("click", function() {
+        btnBinary.addEventListener("click", function () {
+            if (!validateForm()) return;
+            var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
+            var meta = getMeta();
+            disableButtons(true);
+            btnBinary.textContent = "전송 중...";
+            errMsg.classList.remove("show");
+
+            var doSendBinary = function (blob) {
+                var mimeType = blob.type || "image/jpeg";
+                var reader = new FileReader();
+                reader.onloadend = function () {
+                    var b64 = reader.result.split(",")[1];
+                    browser.runtime.sendMessage({
+                        action: "upload_to_n8n",
+                        data: b64,
+                        isBinary: true,
+                        mimeType: mimeType,
+                        filename: fn,
+                        pageUrl: window.location.href,
+                        webhookId: webhookId,
+                        title: meta.title,
+                        description: meta.description
+                    });
+                    root.remove();
+                };
+                reader.readAsDataURL(blob);
+            };
+
+            if (cachedBlob) {
+                doSendBinary(cachedBlob);
+            } else {
+                fetch(srcUrl).then(function (r) { return r.blob(); })
+                    .then(function (blob) { doSendBinary(blob); })
+                    .catch(function (err) {
+                        console.error("Binary 전송 에러:", err);
+                        disableButtons(false);
+                        btnBinary.textContent = "Binary 전송";
+                        errMsg.textContent = "CORS 정책 또는 보안 설정으로 인해 이미지 데이터를 가져오지 못했습니다. 아래의 [URL로 전송]을 클릭해 보세요.";
+                        errMsg.classList.add("show");
+                    });
+            }
+        });
+
+        btnUrl.addEventListener("click", function () {
             if (!validateForm()) return;
             var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
             var meta = getMeta();
@@ -431,7 +483,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             root.remove();
         });
 
-        var escHandler = function(e) {
+        var escHandler = function (e) {
             if (e.key === "Escape") {
                 root.remove();
                 document.removeEventListener("keydown", escHandler);
@@ -608,12 +660,12 @@ function showToastNotification(type, title, message) {
         svg.setAttribute("stroke", "currentColor");
         svg.setAttribute("stroke-width", strokeWidth);
         svg.setAttribute("viewBox", "0 0 24 24");
-        
+
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("stroke-linecap", "round");
         path.setAttribute("stroke-linejoin", "round");
         path.setAttribute("d", pathD);
-        
+
         svg.appendChild(path);
         return svg;
     };
@@ -621,7 +673,7 @@ function showToastNotification(type, title, message) {
     let iconClass = 'icon-info';
     let progressColor = '#3b82f6';
     let pathD = "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"; // info path
-    
+
     if (type === 'success') {
         iconClass = 'icon-success';
         progressColor = '#10b981';
@@ -658,7 +710,7 @@ function showToastNotification(type, title, message) {
         try {
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlString, "text/html");
-            
+
             const copyNodes = (source, target) => {
                 source.childNodes.forEach(node => {
                     if (node.nodeType === Node.TEXT_NODE) {
@@ -668,15 +720,15 @@ function showToastNotification(type, title, message) {
                         if (tagName === "a") {
                             const anchor = document.createElement("a");
                             anchor.textContent = node.textContent;
-                            
+
                             const href = node.getAttribute("href");
                             if (href && (href.startsWith("http://") || href.startsWith("https://"))) {
                                 anchor.setAttribute("href", href);
                             }
-                            
+
                             const targetAttr = node.getAttribute("target");
                             anchor.setAttribute("target", targetAttr || "_blank");
-                            
+
                             target.appendChild(anchor);
                         } else if (tagName === "br") {
                             target.appendChild(document.createElement("br"));

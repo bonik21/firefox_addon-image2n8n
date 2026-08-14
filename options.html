@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>image2n8n 설정</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-color: #0b0c16;
@@ -47,7 +50,7 @@
             width: 400px;
             height: 400px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0,0,0,0) 70%);
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
             top: -100px;
             left: -100px;
             z-index: -1;
@@ -59,7 +62,7 @@
             width: 500px;
             height: 500px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(0,0,0,0) 70%);
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
             bottom: -150px;
             right: -100px;
             z-index: -1;
@@ -80,8 +83,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         header {
@@ -117,8 +127,13 @@
         }
 
         @keyframes logo-shimmer {
-            0% { transform: translate(-50%, -50%) rotate(45deg); }
-            100% { transform: translate(50%, 50%) rotate(45deg); }
+            0% {
+                transform: translate(-50%, -50%) rotate(45deg);
+            }
+
+            100% {
+                transform: translate(50%, 50%) rotate(45deg);
+            }
         }
 
         .logo-icon {
@@ -165,7 +180,8 @@
             position: relative;
         }
 
-        input[type="url"], input[type="text"] {
+        input[type="url"],
+        input[type="text"] {
             width: 100%;
             padding: 14px 16px;
             background: rgba(10, 11, 18, 0.5);
@@ -177,7 +193,8 @@
             transition: var(--transition);
         }
 
-        input[type="url"]:focus, input[type="text"]:focus {
+        input[type="url"]:focus,
+        input[type="text"]:focus {
             outline: none;
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
@@ -271,7 +288,7 @@
         }
 
         .conditional-input.show {
-            max-height: 100px;
+            max-height: 300px;
             opacity: 1;
             margin-top: 12px;
         }
@@ -369,8 +386,15 @@
         }
 
         @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .webhook-item.removing {
@@ -447,13 +471,16 @@
             .container {
                 padding: 24px;
             }
+
             .option-grid {
                 grid-template-columns: 1fr;
             }
+
             .webhook-item {
                 grid-template-columns: 1fr;
                 gap: 12px;
             }
+
             .btn-delete {
                 align-self: stretch;
                 width: 100%;
@@ -525,8 +552,95 @@
             transform: rotate(45deg);
             top: 1px;
         }
+
+        /* Webhook 항목별 Basic Auth */
+        .webhook-auth-section {
+            grid-column: 1 / -1;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 14px;
+            margin-top: 4px;
+        }
+
+        .webhook-auth-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .webhook-auth-toggle-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        .webhook-auth-checkbox {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .webhook-auth-checkbox-box {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            border: 2px solid var(--text-secondary);
+            background: transparent;
+            transition: var(--transition);
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .webhook-auth-section.enabled .webhook-auth-checkbox-box {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 6px var(--accent-primary);
+        }
+
+        .webhook-auth-section.enabled .webhook-auth-checkbox-box::after {
+            content: '';
+            position: absolute;
+            width: 3px;
+            height: 7px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+            top: 0px;
+            left: 3px;
+        }
+
+        .webhook-auth-fields {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .webhook-auth-fields.show {
+            max-height: 120px;
+            opacity: 1;
+        }
+
+        .webhook-auth-field {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .webhook-auth-field-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
     </style>
 </head>
+
 <body>
     <div class="bg-glow-1"></div>
     <div class="bg-glow-2"></div>
@@ -545,7 +659,9 @@
             <div class="form-group">
                 <div class="section-title">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                        </path>
                     </svg>
                     n8n 웹훅 및 메뉴 리스트
                 </div>
@@ -553,7 +669,8 @@
                     <!-- Dynamic Webhook Cards -->
                 </div>
                 <button type="button" id="btn-add-webhook" class="btn-add-webhook">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                        viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"></path>
                     </svg>
                     새 기능/웹훅 추가
@@ -564,7 +681,8 @@
             <div class="form-group">
                 <div class="section-title">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     업로드 성공 시 작업
                 </div>
@@ -616,7 +734,9 @@
             <div class="form-group">
                 <div class="section-title">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                        </path>
                     </svg>
                     업로드 실패 시 작업
                 </div>
@@ -668,7 +788,9 @@
             <div class="form-group">
                 <div class="section-title">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                        </path>
                     </svg>
                     메타데이터 옵션
                 </div>
@@ -679,7 +801,8 @@
                             Exifdata(Title, Description)데이터 전송
                             <div class="option-card-checkbox-box"></div>
                         </div>
-                        <div class="option-card-desc">이미지 전송 전에 Exif 메타데이터에서 제목(Title)과 설명(Description)을 추출하여 포함합니다.</div>
+                        <div class="option-card-desc">이미지 전송 전에 Exif 메타데이터에서 제목(Title)과 설명(Description)을 추출하여 포함합니다.
+                        </div>
                     </label>
                     <label class="option-card-checkbox" id="filename-option-card">
                         <input type="checkbox" id="sendFileName" name="sendFileName">
@@ -692,20 +815,27 @@
                 </div>
             </div>
 
+
             <!-- Footer -->
             <div class="footer">
                 <button type="submit" class="btn-save" id="btn-save">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5"
+                        viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
                     </svg>
                     설정 저장하기
                 </button>
                 <div class="status-msg" id="status-msg">
-                    <svg id="icon-success" style="display: none;" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <svg id="icon-success" style="display: none;" width="16" height="16" fill="none"
+                        stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    <svg id="icon-error" style="display: none;" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    <svg id="icon-error" style="display: none;" width="16" height="16" fill="none" stroke="currentColor"
+                        stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                        </path>
                     </svg>
                     <span id="status-text"></span>
                 </div>
@@ -715,4 +845,5 @@
 
     <script src="options.js"></script>
 </body>
+
 </html>

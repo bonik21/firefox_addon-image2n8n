@@ -156,37 +156,66 @@ browser.runtime.onMessage.addListener((message, sender) => {
                 payload.description = message.description;
             }
 
+            const headers = {};
+
+            // Basic Auth 헤더 추가 (웹훅 항목별 개별 설정)
+            if (targetWebhook.basicAuthEnabled && targetWebhook.basicAuthId) {
+                const credentials = btoa(targetWebhook.basicAuthId + ":" + (targetWebhook.basicAuthPw || ""));
+                headers["Authorization"] = "Basic " + credentials;
+            }
+
+            let fetchBody;
+            if (message.isBinary && message.data) {
+                // Binary 모드: base64 → Blob → multipart/form-data로 실제 파일 전송
+                const byteCharacters = atob(message.data);
+                const byteNumbers = new Uint8Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const blob = new Blob([byteNumbers], { type: message.mimeType || "application/octet-stream" });
+                const formData = new FormData();
+                formData.append("file", blob, payload.filename || "image");
+                if (payload.filename) formData.append("filename", payload.filename);
+                if (payload.page_url) formData.append("page_url", payload.page_url);
+                if (payload.title) formData.append("title", payload.title);
+                if (payload.description) formData.append("description", payload.description);
+                // Content-Type 헤더를 직접 지정하지 않음 → 브라우저가 multipart/form-data; boundary=... 자동 설정
+                fetchBody = formData;
+            } else {
+                // JSON 모드 (Base64 또는 URL)
+                headers["Content-Type"] = "application/json";
+                fetchBody = JSON.stringify(payload);
+            }
+
             fetch(targetWebhook.url, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
+                headers: headers,
+                body: fetchBody
             })
-            .then(async response => {
-                if (response.ok) {
-                    console.log("n8n 전송 성공");
-                    const responseText = await response.text();
+                .then(async response => {
+                    if (response.ok) {
+                        console.log("n8n 전송 성공");
+                        const responseText = await response.text();
 
-                    // 성공 시 동작 처리
-                    if (settings.successAction === "popup") {
-                        sendToast(tabId, "success", "업로드 성공", `[${targetWebhook.name}] 이미지가 성공적으로 전송되었습니다.`);
-                    } else if (settings.successAction === "response") {
-                        sendToast(tabId, "success", "업로드 완료 (응답)", responseText || "응답 내용이 없습니다.");
-                    } else if (settings.successAction === "open_url") {
-                        browser.tabs.create({ url: settings.successUrl });
-                        sendToast(tabId, "success", "업로드 성공", `[${targetWebhook.name}] 업로드 성공으로 링크를 엽니다.`);
+                        // 성공 시 동작 처리
+                        if (settings.successAction === "popup") {
+                            sendToast(tabId, "success", "업로드 성공", `[${targetWebhook.name}] 이미지가 성공적으로 전송되었습니다.`);
+                        } else if (settings.successAction === "response") {
+                            sendToast(tabId, "success", "업로드 완료 (응답)", responseText || "응답 내용이 없습니다.");
+                        } else if (settings.successAction === "open_url") {
+                            browser.tabs.create({ url: settings.successUrl });
+                            sendToast(tabId, "success", "업로드 성공", `[${targetWebhook.name}] 업로드 성공으로 링크를 엽니다.`);
+                        }
+                    } else {
+                        const errorText = await response.text();
+                        console.error("n8n 전송 실패:", response.status, response.statusText, errorText);
+                        handleFailure(tabId, settings, `HTTP ${response.status} Error`, errorText || response.statusText);
                     }
-                } else {
-                    const errorText = await response.text();
-                    console.error("n8n 전송 실패:", response.status, response.statusText, errorText);
-                    handleFailure(tabId, settings, `HTTP ${response.status} Error`, errorText || response.statusText);
-                }
-            })
-            .catch(err => {
-                console.error("에러 발생:", err);
-                handleFailure(tabId, settings, "네트워크 오류", err.message);
-            });
+                })
+                .catch(err => {
+                    console.error("에러 발생:", err);
+                    handleFailure(tabId, settings, "네트워크 오류", err.message);
+                });
         });
     }
 });

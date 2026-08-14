@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Load saved settings
     browser.storage.local.get({
         webhookUrl: "", // deprecated legacy single url
-        webhooks: [],   // list of { id, name, url }
+        webhooks: [],   // list of { id, name, url, basicAuthEnabled, basicAuthId, basicAuthPw }
         successAction: "popup",
         successUrl: "",
         failureAction: "popup",
@@ -46,6 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
+
         // Select the correct radio buttons
         setRadioValue("successAction", items.successAction);
         setRadioValue("failureAction", items.failureAction);
@@ -67,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         container.textContent = ""; // Clear container safely
         webhooks.forEach(wh => {
-            container.appendChild(createWebhookItemDOM(wh.id, wh.name, wh.url));
+            container.appendChild(createWebhookItemDOM(wh.id, wh.name, wh.url, wh.basicAuthEnabled, wh.basicAuthId, wh.basicAuthPw));
         });
     }).catch(err => {
         console.error("설정 로드 에러:", err);
@@ -88,9 +89,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const id = item.dataset.id;
             const nameInput = item.querySelector(".webhook-name-input");
             const urlInput = item.querySelector(".webhook-url-input");
-            
+            const authCheckboxEl = item.querySelector(".webhook-auth-checkbox");
+            const authIdInput = item.querySelector(".webhook-auth-id");
+            const authPwInput = item.querySelector(".webhook-auth-pw");
+
             const name = nameInput ? nameInput.value.trim() : "";
             const url = urlInput ? urlInput.value.trim() : "";
+            const basicAuthEnabled = authCheckboxEl ? authCheckboxEl.checked : false;
+            const basicAuthId = authIdInput ? authIdInput.value.trim() : "";
+            const basicAuthPw = authPwInput ? authPwInput.value.trim() : "";
 
             if (!name || !url) {
                 isValid = false;
@@ -98,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 else if (urlInput && !url) urlInput.focus();
                 return;
             }
-            webhooks.push({ id, name, url });
+            webhooks.push({ id, name, url, basicAuthEnabled, basicAuthId, basicAuthPw });
         });
 
         if (!isValid) {
@@ -175,6 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
 });
 
 // Helper to create SVGs programmatically to avoid any innerHTML warnings
@@ -186,18 +194,18 @@ function createTrashSVG() {
     svg.setAttribute("stroke", "currentColor");
     svg.setAttribute("stroke-width", "2");
     svg.setAttribute("viewBox", "0 0 24 24");
-    
+
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("stroke-linejoin", "round");
     path.setAttribute("d", "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16");
-    
+
     svg.appendChild(path);
     return svg;
 }
 
 // Create webhook item DOM elements programmatically
-function createWebhookItemDOM(id, name = "", url = "") {
+function createWebhookItemDOM(id, name = "", url = "", basicAuthEnabled = false, basicAuthId = "", basicAuthPw = "") {
     const item = document.createElement("div");
     item.className = "webhook-item";
     item.dataset.id = id;
@@ -205,34 +213,34 @@ function createWebhookItemDOM(id, name = "", url = "") {
     // Name field
     const nameField = document.createElement("div");
     nameField.className = "webhook-field";
-    
+
     const nameLabel = document.createElement("label");
     nameLabel.textContent = "기능 이름 (메뉴 표시 명칭)";
-    
+
     const nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.className = "webhook-name-input";
     nameInput.placeholder = "예: 이미지 저장";
     nameInput.value = name;
     nameInput.required = true;
-    
+
     nameField.appendChild(nameLabel);
     nameField.appendChild(nameInput);
 
     // URL field
     const urlField = document.createElement("div");
     urlField.className = "webhook-field";
-    
+
     const urlLabel = document.createElement("label");
     urlLabel.textContent = "n8n Webhook URL";
-    
+
     const urlInput = document.createElement("input");
     urlInput.type = "url";
     urlInput.className = "webhook-url-input";
     urlInput.placeholder = "https://n8n.example.com/webhook/...";
     urlInput.value = url;
     urlInput.required = true;
-    
+
     urlField.appendChild(urlLabel);
     urlField.appendChild(urlInput);
 
@@ -242,7 +250,7 @@ function createWebhookItemDOM(id, name = "", url = "") {
     deleteBtn.className = "btn-delete";
     deleteBtn.setAttribute("aria-label", "삭제");
     deleteBtn.appendChild(createTrashSVG());
-    
+
     deleteBtn.addEventListener("click", () => {
         item.classList.add("removing");
         setTimeout(() => {
@@ -250,9 +258,81 @@ function createWebhookItemDOM(id, name = "", url = "") {
         }, 300);
     });
 
+    // Basic Auth Section (per-webhook)
+    const authSection = document.createElement("div");
+    authSection.className = "webhook-auth-section" + (basicAuthEnabled ? " enabled" : "");
+
+    const authToggle = document.createElement("label");
+    authToggle.className = "webhook-auth-toggle";
+
+    const authCheckboxEl = document.createElement("input");
+    authCheckboxEl.type = "checkbox";
+    authCheckboxEl.className = "webhook-auth-checkbox";
+    authCheckboxEl.checked = basicAuthEnabled;
+
+    const authCheckboxBox = document.createElement("div");
+    authCheckboxBox.className = "webhook-auth-checkbox-box";
+
+    const authToggleLabel = document.createElement("span");
+    authToggleLabel.className = "webhook-auth-toggle-label";
+    authToggleLabel.textContent = "각 웹훅 Basic Auth 인증 (HTTP Basic Authentication)";
+
+    authCheckboxEl.addEventListener("change", () => {
+        if (authCheckboxEl.checked) {
+            authSection.classList.add("enabled");
+            authFieldsDiv.classList.add("show");
+        } else {
+            authSection.classList.remove("enabled");
+            authFieldsDiv.classList.remove("show");
+        }
+    });
+
+    authToggle.appendChild(authCheckboxEl);
+    authToggle.appendChild(authCheckboxBox);
+    authToggle.appendChild(authToggleLabel);
+
+    const authFieldsDiv = document.createElement("div");
+    authFieldsDiv.className = "webhook-auth-fields" + (basicAuthEnabled ? " show" : "");
+
+    // Auth ID field
+    const authIdField = document.createElement("div");
+    authIdField.className = "webhook-auth-field";
+    const authIdLabel = document.createElement("label");
+    authIdLabel.className = "webhook-auth-field-label";
+    authIdLabel.textContent = "인증 ID (Username)";
+    const authIdInput = document.createElement("input");
+    authIdInput.type = "text";
+    authIdInput.className = "webhook-auth-id";
+    authIdInput.placeholder = "Basic Auth ID";
+    authIdInput.value = basicAuthId;
+    authIdInput.autocomplete = "username";
+    authIdField.appendChild(authIdLabel);
+    authIdField.appendChild(authIdInput);
+
+    // Auth PW field
+    const authPwField = document.createElement("div");
+    authPwField.className = "webhook-auth-field";
+    const authPwLabel = document.createElement("label");
+    authPwLabel.className = "webhook-auth-field-label";
+    authPwLabel.textContent = "인증 PW (Password)";
+    const authPwInput = document.createElement("input");
+    authPwInput.type = "password";
+    authPwInput.className = "webhook-auth-pw";
+    authPwInput.placeholder = "Basic Auth Password";
+    authPwInput.value = basicAuthPw;
+    authPwInput.autocomplete = "current-password";
+    authPwField.appendChild(authPwLabel);
+    authPwField.appendChild(authPwInput);
+
+    authFieldsDiv.appendChild(authIdField);
+    authFieldsDiv.appendChild(authPwField);
+    authSection.appendChild(authToggle);
+    authSection.appendChild(authFieldsDiv);
+
     item.appendChild(nameField);
     item.appendChild(urlField);
     item.appendChild(deleteBtn);
+    item.appendChild(authSection);
 
     return item;
 }
