@@ -186,7 +186,8 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
 
         var titleEl = document.createElement("h3");
         titleEl.className = "title";
-        titleEl.textContent = "이미지 업로드 설정 (v1.81)";
+        var _ver = (browser.runtime.getManifest && browser.runtime.getManifest().version) || "";
+        titleEl.textContent = "\uc774\ubbf8\uc9c0 \uc5c5\ub85c\ub4dc \uc124\uc815" + (_ver ? " (v" + _ver + ")" : "");
 
         var closeBtn = document.createElement("button");
         closeBtn.className = "btn-close";
