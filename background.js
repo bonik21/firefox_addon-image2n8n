@@ -1,5 +1,7 @@
 // dynamic context menus helper
 function updateContextMenus() {
+    if (!browser.contextMenus) return;
+    
     browser.contextMenus.removeAll().then(() => {
         browser.storage.local.get({
             webhookUrl: "", // legacy single url support
@@ -32,6 +34,8 @@ function updateContextMenus() {
         }).catch(err => {
             console.error("메뉴 구성 중 스토리지 로드 에러:", err);
         });
+    }).catch(err => {
+        console.error("contextMenus.removeAll 에러:", err);
     });
 }
 
@@ -56,11 +60,12 @@ browser.storage.onChanged.addListener((changes, areaName) => {
 });
 
 // 메뉴 클릭 시 실행
-browser.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === "setup-image2n8n") {
-        browser.runtime.openOptionsPage();
-        return;
-    }
+if (browser.contextMenus) {
+    browser.contextMenus.onClicked.addListener((info, tab) => {
+        if (info.menuItemId === "setup-image2n8n") {
+            browser.runtime.openOptionsPage();
+            return;
+        }
 
     if (info.menuItemId.startsWith("send-to-n8n-")) {
         const webhookId = info.menuItemId.replace("send-to-n8n-", "");
@@ -96,7 +101,8 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
             });
         });
     }
-});
+    });
+}
 
 // content.js로부터 받은 base64 데이터를 n8n으로 POST 전송
 browser.runtime.onMessage.addListener((message, sender) => {
@@ -104,7 +110,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
         const tabId = sender.tab ? sender.tab.id : null;
         const webhookId = message.webhookId;
 
-        browser.storage.local.get({
+        return browser.storage.local.get({
             webhookUrl: "", // legacy
             webhooks: [],
             successAction: "popup",
@@ -128,9 +134,11 @@ browser.runtime.onMessage.addListener((message, sender) => {
             }
 
             if (!targetWebhook || !targetWebhook.url) {
-                browser.runtime.openOptionsPage();
+                try {
+                    browser.runtime.openOptionsPage();
+                } catch (e) {}
                 sendToast(tabId, "error", "설정 필요", "사용 가능한 n8n Webhook URL 설정이 없습니다.");
-                return;
+                return { success: false, error: "no_webhook" };
             }
 
             // 업로드 중 임을 알리는 Toast 표시
@@ -187,7 +195,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                 fetchBody = JSON.stringify(payload);
             }
 
-            fetch(targetWebhook.url, {
+            return fetch(targetWebhook.url, {
                 method: "POST",
                 headers: headers,
                 body: fetchBody
@@ -206,24 +214,39 @@ browser.runtime.onMessage.addListener((message, sender) => {
                             browser.tabs.create({ url: settings.successUrl });
                             sendToast(tabId, "success", "업로드 성공", `[${targetWebhook.name}] 업로드 성공으로 링크를 엽니다.`);
                         }
+                        return { success: true, response: responseText };
                     } else {
                         const errorText = await response.text();
                         console.error("n8n 전송 실패:", response.status, response.statusText, errorText);
                         handleFailure(tabId, settings, `HTTP ${response.status} Error`, errorText || response.statusText);
+                        return { success: false, status: response.status, error: errorText };
                     }
                 })
                 .catch(err => {
                     console.error("에러 발생:", err);
-                    handleFailure(tabId, settings, "네트워크 오류", err.message);
+                    const hint = err.message.toLowerCase().includes("network") ? 
+                        " (Firefox 부가 기능 설정에서 권한이 허용되었는지 확인하세요)" : "";
+                    handleFailure(tabId, settings, "네트워크 오류", err.message + hint);
+                    return { success: false, error: err.message };
                 });
         });
     }
 });
 
 // Toast 메시지 전송 헬퍼 함수
-function sendToast(tabId, type, title, message) {
-    if (!tabId) return;
-    browser.tabs.sendMessage(tabId, {
+async function sendToast(tabId, type, title, message) {
+    let targetTabId = tabId;
+    if (!targetTabId) {
+        try {
+            const tabs = await browser.tabs.query({ active: true });
+            if (tabs && tabs.length > 0) {
+                targetTabId = tabs[0].id;
+            }
+        } catch (e) {}
+    }
+    if (!targetTabId) return;
+
+    browser.tabs.sendMessage(targetTabId, {
         action: "show_toast",
         type: type,
         title: title,

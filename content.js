@@ -59,7 +59,11 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
         sendExifData: false,
         sendFileName: true,
         webhooks: [],
-        webhookUrl: ""
+        webhookUrl: "",
+        successAction: "popup",
+        successUrl: "",
+        failureAction: "popup",
+        failureUrl: ""
     }).then(function (settings) {
         var isExifEnabled = settings.sendExifData;
         var isFileNameEnabled = settings.sendFileName;
@@ -182,7 +186,7 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
 
         var titleEl = document.createElement("h3");
         titleEl.className = "title";
-        titleEl.textContent = "이미지 업로드 설정 (v1.8)";
+        titleEl.textContent = "이미지 업로드 설정 (v1.81)";
 
         var closeBtn = document.createElement("button");
         closeBtn.className = "btn-close";
@@ -433,6 +437,87 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             return true;
         };
 
+        // content.js에서 직접 n8n으로 fetch 전송 (백그라운드 스크립트 우회)
+        // Firefox Android에서 백그라운드 Event Page가 suspend되어
+        // runtime.sendMessage가 실패하는 문제를 근본적으로 해결
+        var uploadToN8nDirect = function (msgPayload) {
+            var targetWhId = msgPayload.webhookId;
+            var targetWebhook = null;
+            if (targetWhId) {
+                targetWebhook = webhooks.find(function(wh) { return wh.id === targetWhId; });
+            }
+            if (!targetWebhook && webhooks.length > 0) {
+                targetWebhook = webhooks[0];
+            }
+            if (!targetWebhook || !targetWebhook.url) {
+                showToastNotification("error", "설정 필요", "사용 가능한 n8n Webhook URL 설정이 없습니다.");
+                return;
+            }
+
+            showToastNotification("info", "업로드 중...", "[" + targetWebhook.name + "] 이미지를 전송하는 중입니다.");
+
+            var payload = { page_url: msgPayload.pageUrl };
+            if (msgPayload.filename !== undefined) payload.filename = msgPayload.filename;
+            if (msgPayload.data)     payload.image_base64 = msgPayload.data;
+            if (msgPayload.imageUrl) payload.image_url = msgPayload.imageUrl;
+            if (msgPayload.title)    payload.title = msgPayload.title;
+            if (msgPayload.description) payload.description = msgPayload.description;
+
+            var headers = {};
+            if (targetWebhook.basicAuthEnabled && targetWebhook.basicAuthId) {
+                headers["Authorization"] = "Basic " + btoa(targetWebhook.basicAuthId + ":" + (targetWebhook.basicAuthPw || ""));
+            }
+
+            var fetchBody;
+            if (msgPayload.isBinary && msgPayload.data) {
+                var byteCharacters = atob(msgPayload.data);
+                var byteNumbers = new Uint8Array(byteCharacters.length);
+                for (var i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                var blob = new Blob([byteNumbers], { type: msgPayload.mimeType || "application/octet-stream" });
+                var formData = new FormData();
+                formData.append("file", blob, payload.filename || "image");
+                if (payload.filename)    formData.append("filename", payload.filename);
+                if (payload.page_url)    formData.append("page_url", payload.page_url);
+                if (payload.title)       formData.append("title", payload.title);
+                if (payload.description) formData.append("description", payload.description);
+                fetchBody = formData;
+            } else {
+                headers["Content-Type"] = "application/json";
+                fetchBody = JSON.stringify(payload);
+            }
+
+            fetch(targetWebhook.url, { method: "POST", headers: headers, body: fetchBody })
+                .then(function(response) {
+                    return response.text().then(function(text) {
+                        return { ok: response.ok, status: response.status, text: text };
+                    });
+                })
+                .then(function(res) {
+                    if (res.ok) {
+                        if (settings.successAction === "popup") {
+                            showToastNotification("success", "업로드 성공", "[" + targetWebhook.name + "] 이미지가 성공적으로 전송되었습니다.");
+                        } else if (settings.successAction === "response") {
+                            showToastNotification("success", "업로드 완료 (응답)", res.text || "응답 내용이 없습니다.");
+                        } else if (settings.successAction === "open_url" && settings.successUrl) {
+                            window.open(settings.successUrl, "_blank");
+                        }
+                    } else {
+                        if (settings.failureAction === "popup") {
+                            showToastNotification("error", "업로드 실패", "HTTP " + res.status + ": " + res.text);
+                        } else if (settings.failureAction === "response") {
+                            showToastNotification("error", "업로드 에러", "HTTP " + res.status + "\n" + res.text);
+                        } else if (settings.failureAction === "open_url" && settings.failureUrl) {
+                            window.open(settings.failureUrl, "_blank");
+                        }
+                    }
+                })
+                .catch(function(err) {
+                    showToastNotification("error", "네트워크 오류", err.message);
+                });
+        };
+
         btnBase64.addEventListener("click", function () {
             if (!validateForm()) return;
             var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
@@ -446,8 +531,8 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                 var reader = new FileReader();
                 reader.onloadend = function () {
                     var b64 = reader.result.split(",")[1];
-                    browser.runtime.sendMessage({
-                        action: "upload_to_n8n",
+                    root.remove();
+                    uploadToN8nDirect({
                         data: b64,
                         filename: fn,
                         pageUrl: window.location.href,
@@ -455,7 +540,6 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                         title: meta.title,
                         description: meta.description
                     });
-                    root.remove();
                 };
                 reader.readAsDataURL(blob);
             };
@@ -489,8 +573,8 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                 var reader = new FileReader();
                 reader.onloadend = function () {
                     var b64 = reader.result.split(",")[1];
-                    browser.runtime.sendMessage({
-                        action: "upload_to_n8n",
+                    root.remove();
+                    uploadToN8nDirect({
                         data: b64,
                         isBinary: true,
                         mimeType: mimeType,
@@ -500,7 +584,6 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                         title: meta.title,
                         description: meta.description
                     });
-                    root.remove();
                 };
                 reader.readAsDataURL(blob);
             };
@@ -525,10 +608,8 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             var fn = (isFileNameEnabled && input) ? (input.value.trim() || "no_filename") : undefined;
             var meta = getMeta();
             var targetWhId = getTargetWebhookId();
-            disableButtons(true);
-            btnUrl.textContent = "전송 중...";
-            browser.runtime.sendMessage({
-                action: "upload_to_n8n",
+            root.remove();
+            uploadToN8nDirect({
                 imageUrl: srcUrl,
                 filename: fn,
                 pageUrl: window.location.href,
@@ -536,7 +617,6 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
                 title: meta.title,
                 description: meta.description
             });
-            root.remove();
         });
 
         var escHandler = function (e) {
