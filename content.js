@@ -1,3 +1,8 @@
+// Chrome/Edge compatibility fallback
+if (typeof browser === "undefined" && typeof chrome !== "undefined") {
+    var browser = chrome;
+}
+
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "show_toast") {
         showToastNotification(request.type, request.title, request.message);
@@ -63,7 +68,10 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
         successAction: "popup",
         successUrl: "",
         failureAction: "popup",
-        failureUrl: ""
+        failureUrl: "",
+        minImageWidth: 50,
+        minImageHeight: 50,
+        ignoredExtensions: ""
     }).then(function (settings) {
         var isExifEnabled = settings.sendExifData;
         var isFileNameEnabled = settings.sendFileName;
@@ -72,27 +80,52 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             webhooks = [{ id: "default", name: "이미지 업로드(to n8n)", url: settings.webhookUrl }];
         }
 
-        // 기존 팝업이 있다면 제거
-        var existing = document.getElementById("image2n8n-popup-root");
-        if (existing) existing.remove();
+        // 1. 확장자 체크
+        if (settings.ignoredExtensions && srcUrl && !srcUrl.startsWith('data:')) {
+            try {
+                let parsed = srcUrl.split("/").pop().split("?")[0];
+                parsed = decodeURIComponent(parsed).trim().toLowerCase();
+                const extMatch = parsed.match(/\.([a-z0-9]+)$/i);
+                if (extMatch) {
+                    const ext = extMatch[1];
+                    const ignoredList = settings.ignoredExtensions.split(",").map(e => e.trim().toLowerCase()).filter(e => e);
+                    if (ignoredList.includes(ext)) {
+                        showToastNotification("info", "이미지 무시됨", "설정에 의해 해당 확장자(" + ext + ")는 무시되었습니다.");
+                        return; // 팝업 띄우지 않음
+                    }
+                }
+            } catch(e) {}
+        }
 
-        var root = document.createElement("div");
-        root.id = "image2n8n-popup-root";
-        root.style.position = "fixed";
-        root.style.top = "0";
-        root.style.left = "0";
-        root.style.width = "100vw";
-        root.style.height = "100vh";
-        root.style.zIndex = "2147483647";
-        root.style.display = "flex";
-        root.style.alignItems = "center";
-        root.style.justifyContent = "center";
-        root.style.background = "rgba(10, 11, 22, 0.65)";
-        root.style.backdropFilter = "blur(10px)";
-        root.style.webkitBackdropFilter = "blur(10px)";
-        root.style.pointerEvents = "auto";
+        const renderPopup = (imgWidth, imgHeight) => {
+            if (imgWidth > 0 && imgHeight > 0) {
+                if (imgWidth < settings.minImageWidth || imgHeight < settings.minImageHeight) {
+                    showToastNotification("info", "이미지 무시됨", "이미지 크기가 설정된 최소 크기보다 작습니다 (" + imgWidth + "x" + imgHeight + ").");
+                    return;
+                }
+            }
 
-        var shadow = root.attachShadow({ mode: "open" });
+            // 기존 팝업이 있다면 제거
+            var existing = document.getElementById("image2n8n-popup-root");
+            if (existing) existing.remove();
+
+            var root = document.createElement("div");
+            root.id = "image2n8n-popup-root";
+            root.style.position = "fixed";
+            root.style.top = "0";
+            root.style.left = "0";
+            root.style.width = "100vw";
+            root.style.height = "100vh";
+            root.style.zIndex = "2147483647";
+            root.style.display = "flex";
+            root.style.alignItems = "center";
+            root.style.justifyContent = "center";
+            root.style.background = "rgba(10, 11, 22, 0.65)";
+            root.style.backdropFilter = "blur(10px)";
+            root.style.webkitBackdropFilter = "blur(10px)";
+            root.style.pointerEvents = "auto";
+
+            var shadow = root.attachShadow({ mode: "open" });
 
         var style = document.createElement("style");
         style.textContent = [
@@ -201,11 +234,22 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
         var body = document.createElement("div");
         body.className = "body";
 
-        if (srcUrl && !srcUrl.startsWith("data:")) {
+        if (srcUrl) {
             var imgPreview = document.createElement("img");
             imgPreview.className = "image-preview";
             imgPreview.src = srcUrl;
             body.appendChild(imgPreview);
+        }
+
+        if (imgWidth > 0 && imgHeight > 0) {
+            var sizeInfo = document.createElement("div");
+            sizeInfo.style.fontSize = "12px";
+            sizeInfo.style.color = "#9ca3af";
+            sizeInfo.style.textAlign = "center";
+            sizeInfo.style.marginTop = "-4px";
+            sizeInfo.style.marginBottom = "4px";
+            sizeInfo.textContent = "크기: " + imgWidth + " × " + imgHeight + " px";
+            body.appendChild(sizeInfo);
         }
 
         // Webhook 선택 드롭다운 (배지 클릭 및 팝업 호출 시 대상 웹훅을 손쉽게 확인/선택)
@@ -627,6 +671,20 @@ function showUploadPopup(srcUrl, initialFilename, isFilenameExtracted, webhookId
             }
         };
         document.addEventListener("keydown", escHandler);
+        }; // end of renderPopup
+
+        if (!srcUrl) {
+            renderPopup(0, 0);
+        } else {
+            var tempImg = new Image();
+            tempImg.onload = function() {
+                renderPopup(tempImg.naturalWidth, tempImg.naturalHeight);
+            };
+            tempImg.onerror = function() {
+                renderPopup(0, 0);
+            };
+            tempImg.src = srcUrl;
+        }
     });
 }
 // 아름다운 Toast 알림 표시 함수 (Shadow DOM으로 독립)
@@ -970,13 +1028,30 @@ function showToastNotification(type, title, message) {
     function attachBadgeToImage(img, settings) {
         if (!img || !img.parentElement || img.dataset.image2n8nBadged === "true") return;
 
-        // SVG data URI 또는 지나치게 작은 아이콘(50x50 미만)은 배지 부착 제외
+        // SVG data URI 또는 지나치게 작은 아이콘(설정값 미만)은 배지 부착 제외
         const src = img.currentSrc || img.src;
         if (!src || src.startsWith("data:image/svg")) return;
 
+        // 확장자 필터 적용
+        if (settings.ignoredExtensions && !src.startsWith("data:")) {
+            try {
+                let parsed = src.split("/").pop().split("?")[0];
+                parsed = decodeURIComponent(parsed).trim().toLowerCase();
+                const extMatch = parsed.match(/\.([a-z0-9]+)$/i);
+                if (extMatch) {
+                    const ext = extMatch[1];
+                    const ignoredList = settings.ignoredExtensions.split(",").map(e => e.trim().toLowerCase()).filter(e => e);
+                    if (ignoredList.includes(ext)) return;
+                }
+            } catch(e) {}
+        }
+
         const w = img.clientWidth || img.naturalWidth || img.width;
         const h = img.clientHeight || img.naturalHeight || img.height;
-        if (w > 0 && h > 0 && (w < 50 || h < 50)) return;
+        const minW = settings.minImageWidth !== undefined ? settings.minImageWidth : 50;
+        const minH = settings.minImageHeight !== undefined ? settings.minImageHeight : 50;
+        
+        if (w > 0 && h > 0 && (w < minW || h < minH)) return;
 
         const parent = img.parentElement;
         const isStandalone = (
@@ -1240,7 +1315,10 @@ function showToastNotification(type, title, message) {
             badgeMode: "always",
             badgeOpacity: 0.8,
             badgeSize: "medium",
-            badgePosition: "top-right"
+            badgePosition: "top-right",
+            minImageWidth: 50,
+            minImageHeight: 50,
+            ignoredExtensions: ""
         }).then(settings => {
             currentSettings = settings;
             removeAllBadges();
@@ -1258,7 +1336,7 @@ function showToastNotification(type, title, message) {
 
     // 설정 변경 시 실시간 동기화
     browser.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName === "local" && (changes.badgeMode || changes.badgeOpacity || changes.badgeSize || changes.badgePosition)) {
+        if (areaName === "local" && (changes.badgeMode || changes.badgeOpacity || changes.badgeSize || changes.badgePosition || changes.minImageWidth || changes.minImageHeight || changes.ignoredExtensions)) {
             initImageBadgeManager();
         }
     });

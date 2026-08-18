@@ -181,7 +181,8 @@
         }
 
         input[type="url"],
-        input[type="text"] {
+        input[type="text"],
+        input[type="number"] {
             width: 100%;
             padding: 14px 16px;
             background: rgba(10, 11, 18, 0.5);
@@ -194,7 +195,8 @@
         }
 
         input[type="url"]:focus,
-        input[type="text"]:focus {
+        input[type="text"]:focus,
+        input[type="number"]:focus {
             outline: none;
             border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
@@ -1012,6 +1014,40 @@
                         </div>
                         <div class="option-card-desc">이미지 전송 전에 파일명(Filename)을 추출하여 편집하고 포함합니다.</div>
                     </label>
+                </div>
+            </div>
+
+            <!-- Image Filter Options -->
+            <div class="form-group">
+                <div class="section-title">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                    </svg>
+                    이미지 필터 설정
+                </div>
+                <div class="option-grid" style="grid-template-columns: 1fr;">
+                    <div class="option-card" style="cursor: default;">
+                        <div class="option-card-title">무시할 최소 이미지 크기</div>
+                        <div class="option-card-desc" style="margin-bottom: 12px;">지정한 크기보다 작은 이미지는 무시합니다 (배지 미부착, 우클릭 전송 불가).</div>
+                        <div style="display: flex; gap: 12px;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">최소 가로 (px)</label>
+                                <input type="number" id="minImageWidth" name="minImageWidth" min="0" value="50">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">최소 세로 (px)</label>
+                                <input type="number" id="minImageHeight" name="minImageHeight" min="0" value="50">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="option-card" style="cursor: default;">
+                        <div class="option-card-title">무시할 특정 확장자</div>
+                        <div class="option-card-desc" style="margin-bottom: 12px;">입력한 확장자 형식의 이미지는 무시합니다. 쉼표(,)로 구분하세요 (예: svg, gif, ico).</div>
+                        <div>
+                            <input type="text" id="ignoredExtensions" name="ignoredExtensions" placeholder="svg, gif, ico">
+                        </div>
+                    </div>
                 </div>
             </div>
 

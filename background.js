@@ -1,3 +1,8 @@
+// Chrome/Edge compatibility fallback
+if (typeof browser === "undefined" && typeof chrome !== "undefined") {
+    var browser = chrome;
+}
+
 // dynamic context menus helper
 function updateContextMenus() {
     if (!browser.contextMenus) return;

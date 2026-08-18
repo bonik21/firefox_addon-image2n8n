@@ -93,7 +93,10 @@ document.addEventListener("DOMContentLoaded", () => {
         badgeMode: "always",
         badgeOpacity: 0.8,
         badgeSize: "medium",
-        badgePosition: "top-right"
+        badgePosition: "top-right",
+        minImageWidth: 50,
+        minImageHeight: 50,
+        ignoredExtensions: ""
     }).then(items => {
         document.getElementById("success-url").value = items.successUrl;
         document.getElementById("failure-url").value = items.failureUrl;
@@ -128,6 +131,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (badgeOpacitySlider) {
             badgeOpacitySlider.value = items.badgeOpacity !== undefined ? items.badgeOpacity : 0.8;
         }
+
+        // Image Filter settings
+        const widthEl = document.getElementById("minImageWidth");
+        if (widthEl) widthEl.value = items.minImageWidth !== undefined ? items.minImageWidth : 50;
+        
+        const heightEl = document.getElementById("minImageHeight");
+        if (heightEl) heightEl.value = items.minImageHeight !== undefined ? items.minImageHeight : 50;
+
+        const extEl = document.getElementById("ignoredExtensions");
+        if (extEl) extEl.value = items.ignoredExtensions || "";
 
         // Update active classes on segmented buttons
         document.querySelectorAll(`.segment-btn[data-type="badgeSize"]`).forEach(b => {
@@ -224,6 +237,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const badgeSize = currentBadgeSize || "medium";
         const badgePosition = currentBadgePosition || "top-right";
 
+        const widthEl = document.getElementById("minImageWidth");
+        const heightEl = document.getElementById("minImageHeight");
+        const extEl = document.getElementById("ignoredExtensions");
+        
+        const minImageWidth = widthEl ? parseInt(widthEl.value, 10) || 0 : 50;
+        const minImageHeight = heightEl ? parseInt(heightEl.value, 10) || 0 : 50;
+        const ignoredExtensions = extEl ? extEl.value.trim() : "";
+
         browser.storage.local.set({
             webhooks,
             successAction,
@@ -235,7 +256,10 @@ document.addEventListener("DOMContentLoaded", () => {
             badgeMode,
             badgeOpacity,
             badgeSize,
-            badgePosition
+            badgePosition,
+            minImageWidth,
+            minImageHeight,
+            ignoredExtensions
         }).then(() => {
             showStatus("설정이 성공적으로 저장되었습니다.", "success");
             saveButton.disabled = false;
