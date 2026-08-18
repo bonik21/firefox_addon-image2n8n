@@ -7,6 +7,22 @@
 
 ---
 
+## 📸 스크린샷 (Screenshots)
+
+### 1. 이미지 모서리 전송 배지 (Image Badge Overlay)
+웹서핑 중 이미지 위에 마우스를 올리거나 모바일 터치 환경에서 우측 상단에 n8n 전송 배지가 표시됩니다.
+![이미지 전송 배지](https://raw.githubusercontent.com/bonik21/firefox_addon-image2n8n/main/images/store-assets/image2n8n-badge.webp)
+
+### 2. 이미지 전송 모달창 (Upload Modal)
+배지 클릭 또는 우클릭 시 나타나는 팝업으로 파일명 편집, 이미지 크기 확인, 다중 웹훅 선택 및 전송 방식을 지정할 수 있습니다.
+![전송 팝업](https://raw.githubusercontent.com/bonik21/firefox_addon-image2n8n/main/images/store-assets/image2n8n-send_popup.webp)
+
+### 3. 부가 기능 설정 대시보드 (Options)
+다중 n8n 웹훅 엔드포인트 관리, 이미지 크기/확장자 필터, 배지 실시간 커스터마이징을 지원합니다.
+![옵션 설정](https://raw.githubusercontent.com/bonik21/firefox_addon-image2n8n/main/images/store-assets/image2n8n-options.webp)
+
+---
+
 ## 주요 기능
 
 1. **다중 동적 콘텍스트 메뉴 지원 (PC)**
