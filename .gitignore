@@ -1,0 +1,14 @@
+# Web-ext build artifacts
+web-ext-artifacts/
+*.zip
+*.xpi
+
+# Node & package files
+node_modules/
+package-lock.json
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

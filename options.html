@@ -107,11 +107,18 @@
             width: 64px;
             height: 64px;
             border-radius: 18px;
-            background: var(--accent-gradient);
             margin-bottom: 16px;
             box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
             position: relative;
             overflow: hidden;
+        }
+
+        .logo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 18px;
+            display: block;
         }
 
         .logo-container::after {
@@ -124,6 +131,7 @@
             background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
             transform: rotate(45deg);
             animation: logo-shimmer 3s infinite linear;
+            pointer-events: none;
         }
 
         @keyframes logo-shimmer {
@@ -134,13 +142,6 @@
             100% {
                 transform: translate(50%, 50%) rotate(45deg);
             }
-        }
-
-        .logo-icon {
-            font-size: 28px;
-            font-weight: 700;
-            color: #ffffff;
-            user-select: none;
         }
 
         h1 {
@@ -847,7 +848,7 @@
     <div class="container">
         <header>
             <div class="logo-container">
-                <span class="logo-icon">n8n</span>
+                <img src="images/icons/icon-128.png" alt="image2n8n icon">
             </div>
             <div class="title-with-badge">
                 <h1>image2n8n 설정</h1>
