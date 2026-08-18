@@ -1,0 +1,40 @@
+{
+    "manifest_version": 3,
+    "name": "image2n8n",
+    "version": "1.86",
+    "description": "우클릭한 이미지를 base64로 변환하여 n8n으로 전송합니다.",
+    "icons": {
+        "16": "images/icons/icon-16.png",
+        "32": "images/icons/icon-32.png",
+        "48": "images/icons/icon-48.png",
+        "96": "images/icons/icon-96.png",
+        "128": "images/icons/icon-128.png",
+        "256": "images/icons/icon-256.png"
+    },
+    "permissions": [
+        "contextMenus",
+        "activeTab",
+        "storage"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "exifreader.js",
+                "content.js"
+            ]
+        }
+    ],
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": true
+    }
+}

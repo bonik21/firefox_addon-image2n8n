@@ -1,0 +1,21 @@
+{
+  "name": "image2n8n",
+  "version": "1.86.0",
+  "description": "Send images to n8n webhooks from Firefox, Edge and Chrome",
+  "scripts": {
+    "build": "node build.js all",
+    "build:firefox": "node build.js firefox",
+    "build:edge": "node build.js edge",
+    "build:chrome": "node build.js chrome"
+  },
+  "keywords": [
+    "firefox",
+    "chrome",
+    "edge",
+    "n8n",
+    "extension",
+    "addon"
+  ],
+  "author": "bonik",
+  "license": "MIT"
+}
