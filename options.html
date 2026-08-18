@@ -100,24 +100,32 @@
             position: relative;
         }
 
+        .header-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+
         .logo-container {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 64px;
-            height: 64px;
-            border-radius: 18px;
-            margin-bottom: 16px;
-            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
             position: relative;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
         .logo-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            border-radius: 18px;
+            border-radius: 14px;
             display: block;
         }
 
@@ -148,10 +156,11 @@
             font-size: 28px;
             font-weight: 700;
             letter-spacing: -0.5px;
-            margin-bottom: 8px;
+            margin: 0;
             background: linear-gradient(to right, #ffffff, #d1d5db);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            line-height: 1.2;
         }
 
         .subtitle {
@@ -814,7 +823,7 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            margin-bottom: 8px;
+            margin-bottom: 0;
         }
 
         .title-with-badge h1 {
@@ -831,6 +840,9 @@
             color: #a5b4fc;
             letter-spacing: 0.5px;
             box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+            line-height: 1.4;
+            display: inline-flex;
+            align-items: center;
         }
 
         .preview-info-desc {
@@ -847,12 +859,14 @@
 
     <div class="container">
         <header>
-            <div class="logo-container">
-                <img src="images/icons/icon-128.png" alt="image2n8n icon">
-            </div>
-            <div class="title-with-badge">
-                <h1>image2n8n 설정</h1>
-                <span class="version-badge" id="app-version">v1.81</span>
+            <div class="header-title-row">
+                <div class="logo-container">
+                    <img src="images/icons/icon-128.png" alt="image2n8n icon">
+                </div>
+                <div class="title-with-badge">
+                    <h1>image2n8n 설정</h1>
+                    <span class="version-badge" id="app-version">v1.81</span>
+                </div>
             </div>
             <p class="subtitle">이미지 업로드 대상 n8n 웹훅 및 동작 옵션을 구성합니다</p>
         </header>
